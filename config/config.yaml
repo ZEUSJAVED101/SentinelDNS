@@ -1,0 +1,22 @@
+application:
+  name: SentinelDNS
+  version: 1.0.0
+  debug: true
+
+server:
+  host: 127.0.0.1
+  port: 8000
+
+database:
+  path: database/sentineldns.db
+
+dns:
+  upstream_servers:
+    - 1.1.1.1
+    - 9.9.9.9
+  enable_doh: true
+  enable_dot: true
+
+logging:
+  level: INFO
+  file: logs/sentineldns.log
