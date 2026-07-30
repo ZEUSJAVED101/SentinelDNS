@@ -79,6 +79,8 @@ class SecurityConfig(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     secret_key: str
+    algorithm: str
+    access_token_expire_minutes: int
 
 
 class Settings(BaseModel):
@@ -107,12 +109,12 @@ with CONFIG_FILE.open("r", encoding="utf-8") as file:
 # Merge .env values
 # ==========================================================
 
-config["security"] = {
-    "secret_key": os.getenv(
-        "SECRET_KEY",
-        "CHANGE_ME_IN_PRODUCTION"
-    )
-}
+config.setdefault("security", {})
+
+config["security"]["secret_key"] = os.getenv(
+    "SECRET_KEY",
+    "CHANGE_ME_IN_PRODUCTION"
+)
 
 
 # ==========================================================

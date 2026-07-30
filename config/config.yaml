@@ -20,3 +20,7 @@ dns:
 logging:
   level: INFO
   file: logs/sentineldns.log
+
+security:
+  algorithm: HS256
+  access_token_expire_minutes: 30
