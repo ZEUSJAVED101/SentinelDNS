@@ -32,6 +32,22 @@ class InvalidCredentialsError(AuthenticationError):
     default_message = "Invalid username or password."
 
 
+class UsernameAlreadyExistsError(AuthenticationError):
+    """
+    Raised when attempting to register with an existing username.
+    """
+
+    default_message = "Username already exists."
+
+
+class EmailAlreadyExistsError(AuthenticationError):
+    """
+    Raised when attempting to register with an existing email.
+    """
+
+    default_message = "Email already exists."
+
+
 class InvalidPasswordError(AuthenticationError):
     """
     Raised when a password fails validation rules.
