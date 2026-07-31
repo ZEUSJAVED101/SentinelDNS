@@ -20,7 +20,7 @@ from backend.exceptions.auth import (
     UsernameAlreadyExistsError,
 )
 from backend.repositories.user_repository import UserRepository
-from backend.schemas.auth import LoginRequest, Token
+from backend.schemas.auth import Token
 from backend.schemas.user import UserCreate, UserResponse
 from backend.security.jwt import create_access_token
 from backend.security.password import hash_password, verify_password
@@ -29,7 +29,7 @@ from database.models.user import User
 
 class AuthenticationService:
     """
-    Handles authentication and user registration.
+    Handles user registration and authentication.
     """
 
     def __init__(self, session: Session) -> None:
@@ -72,18 +72,22 @@ class AuthenticationService:
     # Authentication
     # ==========================================================
 
-    def authenticate(self, credentials: LoginRequest) -> Token:
+    def authenticate(
+        self,
+        username: str,
+        password: str,
+    ) -> Token:
         """
-        Authenticate a user and return an access token.
+        Authenticate a user and return a JWT access token.
         """
 
-        user = self._users.get_by_username(credentials.username)
+        user = self._users.get_by_username(username)
 
         if user is None:
             raise InvalidCredentialsError()
 
         if not verify_password(
-            credentials.password,
+            password,
             user.password_hash,
         ):
             raise InvalidCredentialsError()
@@ -97,4 +101,5 @@ class AuthenticationService:
 
         return Token(
             access_token=access_token,
+            token_type="bearer",
         )

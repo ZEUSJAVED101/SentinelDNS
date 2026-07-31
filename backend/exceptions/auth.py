@@ -78,3 +78,12 @@ class AuthenticationRequiredError(AuthenticationError):
     """
 
     default_message = "Authentication is required."
+
+
+class PermissionDeniedError(AuthenticationError):
+    """
+    Raised when an authenticated user does not have permission
+    to access a protected resource.
+    """
+
+    default_message = "You do not have permission to perform this action."
