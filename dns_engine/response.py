@@ -30,4 +30,4 @@ class DNSResponseBuilder:
 
         reply.header.rcode = RCODE.NXDOMAIN
 
-        return reply.pack()
+        return bytes(reply.pack())

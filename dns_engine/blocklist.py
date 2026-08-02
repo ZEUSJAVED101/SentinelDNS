@@ -3,6 +3,7 @@ Generic Blocklist Loader
 
 Responsibilities:
 - Load any blocklist into memory
+- Reload blocklists
 - Check blocked domains
 """
 
@@ -36,13 +37,15 @@ class BlocklistLoader:
 
         path = self.BLOCKLIST_DIRECTORY / self.filename
 
+        self._domains.clear()
+
         if not path.exists():
 
-            print(f"WARNING: {path} not found.")
+            print(
+                f"[Blocklist] WARNING: {path} not found."
+            )
 
             return
-
-        self._domains.clear()
 
         with path.open(
             "r",
@@ -54,19 +57,28 @@ class BlocklistLoader:
                 domain = line.strip().lower()
 
                 if not domain:
-
                     continue
 
                 if domain.startswith("#"):
-
                     continue
 
                 self._domains.add(domain)
 
         print(
-            f"[Blocklist] {self.filename} : "
+            f"[Blocklist] {self.filename}: "
             f"{len(self._domains)} domains loaded."
         )
+
+    def reload(self) -> None:
+        """
+        Reload the blocklist from disk.
+        """
+
+        print(
+            f"[Blocklist] Reloading {self.filename}..."
+        )
+
+        self.load()
 
     def contains(
         self,
