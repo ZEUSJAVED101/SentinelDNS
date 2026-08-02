@@ -46,7 +46,7 @@ def build_dns_query(domain: str) -> bytes:
 
 def main() -> None:
 
-    query = build_dns_query("google.com")
+    query = build_dns_query("doubleclick.net")
 
     sock = socket.socket(
         socket.AF_INET,

@@ -1,0 +1,6 @@
+doubleclick.net
+googleads.g.doubleclick.net
+pagead2.googlesyndication.com
+ads.youtube.com
+ads.facebook.com
+ads.twitter.com

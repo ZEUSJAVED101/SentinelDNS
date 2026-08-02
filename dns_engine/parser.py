@@ -3,25 +3,27 @@ DNS Packet Parser
 
 Responsibilities:
 - Parse DNS packet headers
-- Extract queried domain name
+- Extract queried domain
 """
 
 from __future__ import annotations
 
 import struct
 
+from dns_engine.models import DNSQuery
+
 
 class DNSParser:
     """
-    Simple DNS packet parser.
+    Parses raw DNS packets.
     """
 
-    def parse(self, packet: bytes) -> dict:
+    def parse(
+        self,
+        packet: bytes,
+    ) -> DNSQuery:
         """
         Parse a DNS query packet.
-
-        Returns:
-            Dictionary containing DNS header information and domain.
         """
 
         if len(packet) < 12:
@@ -34,7 +36,10 @@ class DNSParser:
             answers,
             authority,
             additional,
-        ) = struct.unpack("!HHHHHH", packet[:12])
+        ) = struct.unpack(
+            "!HHHHHH",
+            packet[:12],
+        )
 
         offset = 12
 
@@ -50,9 +55,9 @@ class DNSParser:
 
             offset += 1
 
-            label = packet[offset : offset + length].decode("utf-8")
-
-            labels.append(label)
+            labels.append(
+                packet[offset : offset + length].decode("utf-8")
+            )
 
             offset += length
 
@@ -63,14 +68,14 @@ class DNSParser:
             packet[offset : offset + 4],
         )
 
-        return {
-            "transaction_id": transaction_id,
-            "flags": flags,
-            "questions": questions,
-            "answers": answers,
-            "authority": authority,
-            "additional": additional,
-            "domain": domain,
-            "query_type": query_type,
-            "query_class": query_class,
-        }
+        return DNSQuery(
+            transaction_id=transaction_id,
+            flags=flags,
+            questions=questions,
+            answers=answers,
+            authority=authority,
+            additional=additional,
+            domain=domain,
+            query_type=query_type,
+            query_class=query_class,
+        )
