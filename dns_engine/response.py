@@ -4,6 +4,8 @@ DNS Response Builder
 Responsibilities:
 - Build DNS responses
 - Build NXDOMAIN responses
+- Build FORMERR responses
+- Build SERVFAIL responses
 """
 
 from __future__ import annotations
@@ -17,6 +19,23 @@ class DNSResponseBuilder:
     """
 
     @staticmethod
+    def _build_response(
+        packet: bytes,
+        rcode: int,
+    ) -> bytes:
+        """
+        Build a DNS response with the specified response code.
+        """
+
+        request = DNSRecord.parse(packet)
+
+        reply = request.reply()
+
+        reply.header.rcode = rcode
+
+        return bytes(reply.pack())
+
+    @staticmethod
     def nxdomain(
         packet: bytes,
     ) -> bytes:
@@ -24,10 +43,33 @@ class DNSResponseBuilder:
         Build a valid NXDOMAIN response.
         """
 
-        request = DNSRecord.parse(packet)
+        return DNSResponseBuilder._build_response(
+            packet,
+            RCODE.NXDOMAIN,
+        )
 
-        reply = request.reply()
+    @staticmethod
+    def formerr(
+        packet: bytes,
+    ) -> bytes:
+        """
+        Build a DNS Format Error response.
+        """
 
-        reply.header.rcode = RCODE.NXDOMAIN
+        return DNSResponseBuilder._build_response(
+            packet,
+            RCODE.FORMERR,
+        )
 
-        return bytes(reply.pack())
+    @staticmethod
+    def servfail(
+        packet: bytes,
+    ) -> bytes:
+        """
+        Build a DNS Server Failure response.
+        """
+
+        return DNSResponseBuilder._build_response(
+            packet,
+            RCODE.SERVFAIL,
+        )

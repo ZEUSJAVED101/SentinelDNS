@@ -9,7 +9,7 @@ Responsibilities:
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from time import time
 
 
@@ -17,10 +17,14 @@ from time import time
 # DNS Query
 # ==========================================================
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class DNSQuery:
     """
     Parsed DNS query.
+
+    This object is immutable after creation to prevent
+    accidental modification while it moves through the
+    DNS processing pipeline.
     """
 
     transaction_id: int
@@ -56,7 +60,7 @@ class DNSCacheEntry:
 
     expires_at: float
 
-    created_at: float
+    created_at: float = field(default_factory=time)
 
     hits: int = 0
 
@@ -67,12 +71,19 @@ class DNSCacheEntry:
 
         return time() >= self.expires_at
 
+    def register_hit(self) -> None:
+        """
+        Increment cache hit counter.
+        """
+
+        self.hits += 1
+
 
 # ==========================================================
 # Filter Decision
 # ==========================================================
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class FilterDecision:
     """
     Result returned by a DNS filter.

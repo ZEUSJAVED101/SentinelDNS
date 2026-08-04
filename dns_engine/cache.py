@@ -5,10 +5,12 @@ Responsibilities:
 - Cache DNS responses
 - Expire old entries
 - Track cache statistics
+- Prevent unlimited memory growth
 """
 
 from __future__ import annotations
 
+from collections import OrderedDict
 from time import time
 
 from dns_engine.models import DNSCacheEntry, DNSQuery
@@ -16,14 +18,16 @@ from dns_engine.models import DNSCacheEntry, DNSQuery
 
 class DNSCache:
     """
-    In-memory DNS cache.
+    In-memory DNS cache with automatic eviction.
     """
 
     DEFAULT_TTL = 300
 
+    MAX_CACHE_SIZE = 10000
+
     def __init__(self) -> None:
 
-        self._cache: dict[str, DNSCacheEntry] = {}
+        self._cache: OrderedDict[str, DNSCacheEntry] = OrderedDict()
 
         self.hits = 0
 
@@ -53,9 +57,11 @@ class DNSCache:
 
             return None
 
-        entry.hits += 1
+        entry.register_hit()
 
         self.hits += 1
+
+        self._cache.move_to_end(query.domain)
 
         return entry.response
 
@@ -68,14 +74,70 @@ class DNSCache:
         Store DNS response.
         """
 
+        if len(response) == 0:
+
+            return
+
+        now = time()
+
         self._cache[query.domain] = DNSCacheEntry(
             response=response,
-            created_at=time(),
-            expires_at=time() + self.DEFAULT_TTL,
+            expires_at=now + self.DEFAULT_TTL,
         )
 
+        self._cache.move_to_end(query.domain)
+
+        while len(self._cache) > self.MAX_CACHE_SIZE:
+
+            self._cache.popitem(last=False)
+
+    def clear(self) -> None:
+        """
+        Clear the cache.
+        """
+
+        self._cache.clear()
+
+        self.hits = 0
+
+        self.misses = 0
+
+    def remove_expired(self) -> int:
+        """
+        Remove expired cache entries.
+
+        Returns
+        -------
+        int
+            Number of removed entries.
+        """
+
+        removed = 0
+
+        now = time()
+
+        expired = [
+
+            domain
+
+            for domain, entry in self._cache.items()
+
+            if entry.expires_at <= now
+
+        ]
+
+        for domain in expired:
+
+            del self._cache[domain]
+
+            removed += 1
+
+        return removed
+
     @property
-    def size(self) -> int:
+    def size(
+        self,
+    ) -> int:
         """
         Number of cached entries.
         """
@@ -83,7 +145,12 @@ class DNSCache:
         return len(self._cache)
 
     @property
-    def hit_ratio(self) -> float:
+    def hit_ratio(
+        self,
+    ) -> float:
+        """
+        Cache hit ratio.
+        """
 
         total = self.hits + self.misses
 
