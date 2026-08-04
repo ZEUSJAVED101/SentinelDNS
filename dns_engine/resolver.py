@@ -39,14 +39,39 @@ class DNSResolver:
         Process a DNS query.
         """
 
-        query = self.parser.parse(packet)
+        #
+        # Parse DNS packet safely.
+        #
+        try:
+
+            query = self.parser.parse(
+                packet,
+            )
+
+        except ValueError as exc:
+
+            print("\n========================================")
+            print(" SentinelDNS")
+            print("========================================")
+            print("Parser : FAILED")
+            print(f"Reason : {exc}")
+            print("========================================\n")
+
+            return DNSResponseBuilder.formerr(
+                packet,
+            )
 
         print("\n========================================")
         print(" SentinelDNS")
         print("========================================")
         print(f"Domain : {query.domain}")
 
-        cached = self.cache.lookup(query)
+        #
+        # Cache lookup.
+        #
+        cached = self.cache.lookup(
+            query,
+        )
 
         if cached is not None:
 
@@ -57,7 +82,12 @@ class DNSResolver:
 
         print("Cache : MISS")
 
-        decision = self.filter_manager.evaluate(query)
+        #
+        # Filter pipeline.
+        #
+        decision = self.filter_manager.evaluate(
+            query,
+        )
 
         if not decision.allowed:
 
@@ -77,10 +107,54 @@ class DNSResolver:
 
         print("Filter : ALLOWED")
 
-        self.logger.log(query)
+        #
+        # Log DNS query.
+        #
+        self.logger.log(
+            query,
+        )
 
-        response = self.upstream.query(packet)
+        #
+        # Forward to upstream resolver.
+        #
+        try:
 
+            response = self.upstream.query(
+                packet,
+            )
+
+        except ValueError as exc:
+
+            print("Upstream : INVALID RESPONSE")
+            print(f"Reason : {exc}")
+            print("========================================\n")
+
+            return DNSResponseBuilder.servfail(
+                packet,
+            )
+
+        except TimeoutError:
+
+            print("Upstream : TIMEOUT")
+            print("========================================\n")
+
+            return DNSResponseBuilder.servfail(
+                packet,
+            )
+
+        except OSError as exc:
+
+            print("Upstream : FAILED")
+            print(f"Reason : {exc}")
+            print("========================================\n")
+
+            return DNSResponseBuilder.servfail(
+                packet,
+            )
+
+        #
+        # Cache only successful responses.
+        #
         self.cache.store(
             query,
             response,

@@ -30,6 +30,7 @@ class DNSServer:
 
         self.host = host
         self.port = port
+
         self.resolver = DNSResolver()
 
         self.socket = socket.socket(
@@ -63,19 +64,66 @@ class DNSServer:
             f"=====================================\n"
         )
 
-        while True:
+        try:
 
-            data, address = self.socket.recvfrom(512)
+            while True:
+
+                try:
+
+                    data, address = self.socket.recvfrom(
+                        512,
+                    )
+
+                    LOGGER.info(
+                        "Received %d bytes from %s",
+                        len(data),
+                        address,
+                    )
+
+                    response = self.resolver.resolve(
+                        data,
+                    )
+
+                    self.socket.sendto(
+                        response,
+                        address,
+                    )
+
+                except KeyboardInterrupt:
+
+                    raise
+
+                except Exception:
+
+                    LOGGER.exception(
+                        "Unhandled exception while processing DNS request."
+                    )
+
+                    #
+                    # Continue serving other clients.
+                    #
+                    continue
+
+        except KeyboardInterrupt:
 
             LOGGER.info(
-                "Received %d bytes from %s",
-                len(data),
-                address,
+                "Stopping SentinelDNS..."
             )
 
-            response = self.resolver.resolve(data)
+            print(
+                "\nStopping SentinelDNS..."
+            )
 
-            self.socket.sendto(
-                response,
-                address,
+        finally:
+
+            try:
+
+                self.socket.close()
+
+            except OSError:
+
+                pass
+
+            LOGGER.info(
+                "DNS socket closed."
             )

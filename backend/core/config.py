@@ -8,9 +8,11 @@ Responsibilities:
 - Expose a single immutable settings object
 """
 
-from pathlib import Path
-from typing import List
+from __future__ import annotations
+
 import os
+from pathlib import Path
+from typing import Any, List
 
 import yaml
 from dotenv import load_dotenv
@@ -24,6 +26,7 @@ from pydantic import BaseModel, ConfigDict
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 CONFIG_FILE = PROJECT_ROOT / "config" / "config.yaml"
+
 ENV_FILE = PROJECT_ROOT / ".env"
 
 
@@ -38,6 +41,7 @@ if ENV_FILE.exists():
 # ==========================================================
 # Configuration Models
 # ==========================================================
+
 
 class ApplicationConfig(BaseModel):
     model_config = ConfigDict(frozen=True)
@@ -95,30 +99,61 @@ class Settings(BaseModel):
 
 
 # ==========================================================
-# Load YAML
+# Load YAML Configuration
 # ==========================================================
 
 if not CONFIG_FILE.exists():
-    raise FileNotFoundError(f"Configuration file not found: {CONFIG_FILE}")
 
-with CONFIG_FILE.open("r", encoding="utf-8") as file:
-    config = yaml.safe_load(file)
+    raise FileNotFoundError(
+        f"Configuration file not found: {CONFIG_FILE}"
+    )
+
+try:
+
+    with CONFIG_FILE.open(
+        "r",
+        encoding="utf-8",
+    ) as file:
+
+        config: Any = yaml.safe_load(file)
+
+except yaml.YAMLError as exc:
+
+    raise RuntimeError(
+        f"Invalid YAML configuration: {CONFIG_FILE}"
+    ) from exc
+
+if not isinstance(config, dict):
+
+    raise RuntimeError(
+        "Configuration file must contain a YAML mapping."
+    )
 
 
 # ==========================================================
-# Merge .env values
+# Merge Environment Variables
 # ==========================================================
 
-config.setdefault("security", {})
-
-config["security"]["secret_key"] = os.getenv(
-    "SECRET_KEY",
-    "CHANGE_ME_IN_PRODUCTION"
+config.setdefault(
+    "security",
+    {},
 )
+
+secret_key = os.getenv("SECRET_KEY")
+
+if not secret_key:
+
+    raise RuntimeError(
+        "SECRET_KEY environment variable is not configured."
+    )
+
+config["security"]["secret_key"] = secret_key
 
 
 # ==========================================================
 # Global Settings Object
 # ==========================================================
 
-settings = Settings(**config)
+settings = Settings(
+    **config,
+)
