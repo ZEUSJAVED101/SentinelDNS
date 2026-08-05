@@ -3,16 +3,16 @@ SentinelDNS Configuration Module
 
 Responsibilities:
 - Load environment variables (.env)
-- Load YAML configuration (config.yaml)
+- Load YAML configuration
 - Validate configuration using Pydantic
-- Expose a single immutable settings object
+- Expose immutable application settings
 """
 
 from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Any, List
+from typing import Any
 
 import yaml
 from dotenv import load_dotenv
@@ -64,37 +64,144 @@ class DatabaseConfig(BaseModel):
     path: str
 
 
+# ==========================================================
+# DNS
+# ==========================================================
+
+
+class UpstreamConfig(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    servers: list[str]
+
+    timeout: int
+
+    retries: int
+
+    max_response_size: int
+
+
+class DoHConfig(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    enabled: bool
+
+    provider: str
+
+    endpoint: str
+
+    timeout: int
+
+    http2: bool
+
+    verify_tls: bool
+
+
+class DoTConfig(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    enabled: bool
+
+    server: str
+
+    port: int
+
+    timeout: int
+
+    verify_tls: bool
+
+
 class DNSConfig(BaseModel):
     model_config = ConfigDict(frozen=True)
 
-    upstream_servers: List[str]
-    enable_doh: bool
-    enable_dot: bool
+    transport: str
+
+    upstream: UpstreamConfig
+
+    doh: DoHConfig
+
+    dot: DoTConfig
+
+
+# ==========================================================
+# DHCP
+# ==========================================================
+
+
+class DHCPPoolConfig(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    start: str
+
+    end: str
+
+
+class DHCPConfig(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    enabled: bool
+
+    interface: str
+
+    server_ip: str
+
+    subnet_mask: str
+
+    gateway: str
+
+    dns_server: str
+
+    lease_time: int
+
+    pool: DHCPPoolConfig
+
+
+# ==========================================================
+# Logging
+# ==========================================================
 
 
 class LoggingConfig(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     level: str
+
     file: str
+
+
+# ==========================================================
+# Security
+# ==========================================================
 
 
 class SecurityConfig(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     secret_key: str
+
     algorithm: str
+
     access_token_expire_minutes: int
+# ==========================================================
+# Root Settings
+# ==========================================================
 
 
 class Settings(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     application: ApplicationConfig
+
     server: ServerConfig
+
     database: DatabaseConfig
+
     dns: DNSConfig
+
+    dhcp: DHCPConfig
+
     logging: LoggingConfig
+
     security: SecurityConfig
 
 
@@ -123,7 +230,10 @@ except yaml.YAMLError as exc:
         f"Invalid YAML configuration: {CONFIG_FILE}"
     ) from exc
 
-if not isinstance(config, dict):
+if not isinstance(
+    config,
+    dict,
+):
 
     raise RuntimeError(
         "Configuration file must contain a YAML mapping."
@@ -139,7 +249,9 @@ config.setdefault(
     {},
 )
 
-secret_key = os.getenv("SECRET_KEY")
+secret_key = os.getenv(
+    "SECRET_KEY",
+)
 
 if not secret_key:
 
@@ -147,13 +259,25 @@ if not secret_key:
         "SECRET_KEY environment variable is not configured."
     )
 
-config["security"]["secret_key"] = secret_key
+config["security"][
+    "secret_key"
+] = secret_key
 
 
 # ==========================================================
-# Global Settings Object
+# Validate Configuration
 # ==========================================================
 
 settings = Settings(
     **config,
 )
+
+
+# ==========================================================
+# Export
+# ==========================================================
+
+__all__ = [
+    "settings",
+    "Settings",
+]
