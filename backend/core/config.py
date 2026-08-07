@@ -64,20 +64,19 @@ class DatabaseConfig(BaseModel):
     path: str
 
 
-# ==========================================================
-# DNS
-# ==========================================================
+class DNSListenConfig(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    host: str
+    port: int
 
 
-class UpstreamConfig(BaseModel):
+class DNSUpstreamConfig(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     servers: list[str]
-
-    timeout: int
-
+    timeout: float
     retries: int
-
     max_response_size: int
 
 
@@ -85,15 +84,10 @@ class DoHConfig(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     enabled: bool
-
     provider: str
-
     endpoint: str
-
-    timeout: int
-
+    timeout: float
     http2: bool
-
     verify_tls: bool
 
 
@@ -101,13 +95,9 @@ class DoTConfig(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     enabled: bool
-
     server: str
-
     port: int
-
-    timeout: int
-
+    timeout: float
     verify_tls: bool
 
 
@@ -115,24 +105,24 @@ class DNSConfig(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     transport: str
-
-    upstream: UpstreamConfig
-
+    listen: DNSListenConfig
+    upstream: DNSUpstreamConfig
     doh: DoHConfig
-
     dot: DoTConfig
-
-
 # ==========================================================
 # DHCP
 # ==========================================================
+class DHCPListenConfig(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    host: str
+    port: int
 
 
 class DHCPPoolConfig(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     start: str
-
     end: str
 
 
@@ -140,6 +130,8 @@ class DHCPConfig(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     enabled: bool
+
+    listen: DHCPListenConfig
 
     interface: str
 
@@ -156,22 +148,11 @@ class DHCPConfig(BaseModel):
     pool: DHCPPoolConfig
 
 
-# ==========================================================
-# Logging
-# ==========================================================
-
-
 class LoggingConfig(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     level: str
-
     file: str
-
-
-# ==========================================================
-# Security
-# ==========================================================
 
 
 class SecurityConfig(BaseModel):
@@ -182,9 +163,6 @@ class SecurityConfig(BaseModel):
     algorithm: str
 
     access_token_expire_minutes: int
-# ==========================================================
-# Root Settings
-# ==========================================================
 
 
 class Settings(BaseModel):
@@ -203,6 +181,7 @@ class Settings(BaseModel):
     logging: LoggingConfig
 
     security: SecurityConfig
+
 
 
 # ==========================================================

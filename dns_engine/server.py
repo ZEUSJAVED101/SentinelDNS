@@ -3,8 +3,9 @@ SentinelDNS DNS Server
 
 Responsibilities:
 - Listen for DNS queries
-- Delegate query processing to the resolver
+- Delegate queries to the DNS resolver
 - Return DNS responses
+- Read server configuration from config.yaml
 """
 
 from __future__ import annotations
@@ -12,6 +13,7 @@ from __future__ import annotations
 import logging
 import socket
 
+from backend.core.config import settings
 from dns_engine.resolver import DNSResolver
 
 LOGGER = logging.getLogger(__name__)
@@ -19,18 +21,20 @@ LOGGER = logging.getLogger(__name__)
 
 class DNSServer:
     """
-    Simple UDP DNS server.
+    UDP DNS Server.
     """
+
+    MAX_DNS_PACKET_SIZE = 512
 
     def __init__(
         self,
-        host: str = "127.0.0.1",
-        port: int = 5300,
     ) -> None:
+        """
+        Initialize the DNS server.
+        """
 
-        self.host = host
-        self.port = port
-
+        self.host = settings.dns.listen.host
+        self.port = settings.dns.listen.port
         self.resolver = DNSResolver()
 
         self.socket = socket.socket(
@@ -38,17 +42,40 @@ class DNSServer:
             socket.SOCK_DGRAM,
         )
 
-    def start(self) -> None:
+        #
+        # Allow quick restart after shutdown.
+        #
+        self.socket.setsockopt(
+            socket.SOL_SOCKET,
+            socket.SO_REUSEADDR,
+            1,
+        )
+
+    def start(
+        self,
+    ) -> None:
         """
         Start the DNS server.
         """
 
-        self.socket.bind(
-            (
-                self.host,
-                self.port,
+        try:
+
+            self.socket.bind(
+                (
+                    self.host,
+                    self.port,
+                )
             )
-        )
+
+        except OSError as exc:
+
+            LOGGER.exception(
+                "Unable to bind DNS socket."
+            )
+
+            raise RuntimeError(
+                f"Cannot bind UDP {self.host}:{self.port}"
+            ) from exc
 
         LOGGER.info(
             "SentinelDNS listening on %s:%s",
@@ -57,28 +84,22 @@ class DNSServer:
         )
 
         print(
-            f"\n"
-            f"=====================================\n"
-            f" SentinelDNS DNS Engine Started\n"
+            "\n"
+            "========================================\n"
+            " SentinelDNS DNS Engine Started\n"
             f" Listening on UDP {self.host}:{self.port}\n"
-            f"=====================================\n"
+            "========================================\n"
         )
 
         try:
 
             while True:
 
+                data, address = self.socket.recvfrom(
+                    self.MAX_DNS_PACKET_SIZE,
+                )
+
                 try:
-
-                    data, address = self.socket.recvfrom(
-                        512,
-                    )
-
-                    LOGGER.info(
-                        "Received %d bytes from %s",
-                        len(data),
-                        address,
-                    )
 
                     response = self.resolver.resolve(
                         data,
@@ -89,20 +110,11 @@ class DNSServer:
                         address,
                     )
 
-                except KeyboardInterrupt:
-
-                    raise
-
                 except Exception:
 
                     LOGGER.exception(
-                        "Unhandled exception while processing DNS request."
+                        "Failed to process DNS request."
                     )
-
-                    #
-                    # Continue serving other clients.
-                    #
-                    continue
 
         except KeyboardInterrupt:
 
@@ -121,7 +133,6 @@ class DNSServer:
                 self.socket.close()
 
             except OSError:
-
                 pass
 
             LOGGER.info(

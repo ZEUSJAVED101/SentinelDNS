@@ -15,43 +15,40 @@ dns:
   # udp | doh | dot
   transport: udp
 
+  listen:
+    host: 127.0.0.1
+    port: 5300
+
   upstream:
     servers:
       - 1.1.1.1
       - 9.9.9.9
 
     timeout: 5
-
     retries: 2
-
     max_response_size: 4096
 
   doh:
-    enabled: false
-
+    enabled: true
     provider: cloudflare
-
     endpoint: https://cloudflare-dns.com/dns-query
-
     timeout: 5
-
     http2: true
-
     verify_tls: true
 
   dot:
     enabled: false
-
     server: 1.1.1.1
-
     port: 853
-
     timeout: 5
-
     verify_tls: true
 
 dhcp:
   enabled: false
+
+  listen:
+    host: 0.0.0.0
+    port: 67
 
   interface: ""
 
