@@ -9,8 +9,6 @@ Responsibilities:
 
 from __future__ import annotations
 
-import socket
-
 
 class DNSUpstream:
     """
@@ -21,14 +19,50 @@ class DNSUpstream:
 
     def __init__(
         self,
-        server: str = "1.1.1.1",
-        port: int = 53,
-        timeout: float = 5.0,
     ) -> None:
+        """
+        Initialize the upstream DNS transport.
+        """
 
-        self.server = server
-        self.port = port
-        self.timeout = timeout
+        from backend.core.config import settings
+        from dns_engine.udp.client import UDPClient
+        from dns_engine.dot.client import DoTClient
+        from dns_engine.doh.provider import get_provider
+        from dns_engine.doh.client import DoHClient
+
+        self.transport = settings.dns.transport.lower()
+
+        if self.transport == "udp":
+
+            self.client = UDPClient(
+                server=settings.dns.upstream.servers[0],
+                timeout=settings.dns.upstream.timeout,
+                max_response_size=settings.dns.upstream.max_response_size,
+            )
+
+        elif self.transport == "dot":
+
+            self.client = DoTClient(
+                server=settings.dns.dot.server,
+                port=settings.dns.dot.port,
+                timeout=settings.dns.dot.timeout,
+            )
+
+        elif self.transport == "doh":
+
+            provider = get_provider(
+                settings.dns.doh.provider,
+            )
+
+            self.client = DoHClient(
+                provider,
+            )
+
+        else:
+
+            raise ValueError(
+                f"Unsupported DNS transport: {self.transport}"
+            )
 
     def _validate_response(
         self,
@@ -45,14 +79,7 @@ class DNSUpstream:
                 "Received incomplete DNS response."
             )
 
-        #
-        # Verify Transaction ID.
-        #
-        request_id = request[:2]
-
-        response_id = response[:2]
-
-        if request_id != response_id:
+        if request[:2] != response[:2]:
 
             raise ValueError(
                 "DNS transaction ID mismatch."
@@ -63,33 +90,24 @@ class DNSUpstream:
         packet: bytes,
     ) -> bytes:
         """
-        Forward a DNS packet upstream and return the response.
+        Forward a DNS packet using the configured transport.
         """
 
-        with socket.socket(
-            socket.AF_INET,
-            socket.SOCK_DGRAM,
-        ) as sock:
-
-            sock.settimeout(
-                self.timeout,
+        if (
+            not packet
+            or len(packet) < self.MIN_DNS_PACKET_SIZE
+        ):
+            raise ValueError(
+                "Invalid DNS request packet."
             )
 
-            sock.sendto(
-                packet,
-                (
-                    self.server,
-                    self.port,
-                ),
-            )
+        response = self.client.query(
+            packet,
+        )
 
-            response, _ = sock.recvfrom(
-                4096,
-            )
+        self._validate_response(
+            packet,
+            response,
+        )
 
-            self._validate_response(
-                packet,
-                response,
-            )
-
-            return response
+        return response

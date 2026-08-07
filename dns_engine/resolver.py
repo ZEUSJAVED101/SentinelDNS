@@ -114,35 +114,17 @@ class DNSResolver:
             query,
         )
 
-        #
-        # Forward to upstream resolver.
-        #
+    #
+    # Forward to upstream resolver.
+    #
+        
         try:
 
             response = self.upstream.query(
                 packet,
             )
 
-        except ValueError as exc:
-
-            print("Upstream : INVALID RESPONSE")
-            print(f"Reason : {exc}")
-            print("========================================\n")
-
-            return DNSResponseBuilder.servfail(
-                packet,
-            )
-
-        except TimeoutError:
-
-            print("Upstream : TIMEOUT")
-            print("========================================\n")
-
-            return DNSResponseBuilder.servfail(
-                packet,
-            )
-
-        except OSError as exc:
+        except Exception as exc:
 
             print("Upstream : FAILED")
             print(f"Reason : {exc}")
