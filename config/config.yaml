@@ -42,9 +42,8 @@ dns:
     port: 853
     timeout: 5
     verify_tls: true
-
 dhcp:
-  enabled: false
+  enabled: true
 
   listen:
     host: 0.0.0.0
@@ -52,19 +51,16 @@ dhcp:
 
   interface: ""
 
-  server_ip: ""
-
-  subnet_mask: ""
-
-  gateway: ""
-
-  dns_server: "127.0.0.1"
+  server_ip: "192.168.10.1"
+  subnet_mask: "255.255.255.0"
+  gateway: "192.168.10.1"
+  dns_server: "192.168.10.1"
 
   lease_time: 86400
 
   pool:
-    start: ""
-    end: ""
+    start: "192.168.10.100"
+    end: "192.168.10.200"
 
 logging:
   level: INFO

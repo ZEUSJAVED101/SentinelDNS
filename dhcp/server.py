@@ -25,6 +25,7 @@ from __future__ import annotations
 import logging
 import socket
 import struct
+import time
 from threading import Event, RLock
 
 from backend.core.config import settings
@@ -157,19 +158,89 @@ class DHCPServer:
             DHCPReservationManager()
         )
 
+        self.storage = DHCPLeaseStorage()
+
         self.lease_manager = (
             DHCPLeaseManager(
                 self.pool
             )
         )
 
-        self.storage = DHCPLeaseStorage()
+        self._restore_persisted_leases()
 
         self.socket: socket.socket | None = None
 
         self._stop_event = Event()
 
         self._lock = RLock()
+
+    # ==========================================================
+    # Persistent Lease Restoration
+    # ==========================================================
+
+    def _restore_persisted_leases(self) -> None:
+        """
+        Restore active persisted DHCP leases into the
+        in-memory address pool.
+
+        Expired leases are removed from persistent storage
+        so their addresses can be reused safely.
+        """
+
+        now = time.time()
+
+        try:
+            stored_leases = self.storage.all()
+        except Exception as exc:
+            LOGGER.warning(
+                "Unable to restore persisted DHCP leases: %s",
+                exc,
+            )
+            return
+
+        restored = 0
+        expired = 0
+
+        for stored in stored_leases:
+            lease_end = stored.lease_end
+
+            try:
+                lease_end = float(lease_end)
+            except (TypeError, ValueError):
+                LOGGER.warning(
+                    "Ignoring lease with invalid expiry for client %s.",
+                    stored.client_id,
+                )
+                continue
+
+            if lease_end <= now:
+                try:
+                    self.storage.delete(stored.client_id)
+                    expired += 1
+                except Exception as exc:
+                    LOGGER.warning(
+                        "Unable to remove expired lease for %s: %s",
+                        stored.client_id,
+                        exc,
+                    )
+                continue
+
+            try:
+                self.pool.allocate_specific(stored.ip_address)
+                restored += 1
+            except DHCPPoolError as exc:
+                LOGGER.warning(
+                    "Unable to restore persisted lease %s -> %s: %s",
+                    stored.client_id,
+                    stored.ip_address,
+                    exc,
+                )
+
+        LOGGER.info(
+            "DHCP lease restoration complete: %d active, %d expired.",
+            restored,
+            expired,
+        )
 
     # ==========================================================
     # Socket Lifecycle
