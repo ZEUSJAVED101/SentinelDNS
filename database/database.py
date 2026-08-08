@@ -7,7 +7,7 @@ Responsibilities:
 - Create database sessions
 - Initialize database tables
 """
-
+import database.models
 from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
