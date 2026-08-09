@@ -815,7 +815,7 @@ class DHCPServer:
                     client_id,
                 )
 
-        except DHCPLeaseError as exc:
+        except (DHCPLeaseError, DHCPPoolError) as exc:
 
             LOGGER.warning(
                 "Unable to release DHCP lease: %s",
@@ -909,7 +909,7 @@ class DHCPServer:
 
                 return lease
 
-            except DHCPLeaseError as exc:
+            except (DHCPLeaseError, DHCPPoolError) as exc:
 
                 LOGGER.warning(
                     "Reservation could not be assigned "
@@ -939,7 +939,7 @@ class DHCPServer:
 
                 return lease
 
-            except DHCPLeaseError:
+            except (DHCPLeaseError, DHCPPoolError) as exc:
 
                 LOGGER.info(
                     "Requested IP %s is unavailable "
