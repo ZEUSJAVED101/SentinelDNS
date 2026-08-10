@@ -13,7 +13,7 @@ database:
 dns:
   # Supported transports:
   # udp | doh | dot
-  transport: udp
+  transport: doh
 
   listen:
     host: 127.0.0.1
@@ -37,7 +37,7 @@ dns:
     verify_tls: true
 
   dot:
-    enabled: false
+    enabled: true
     server: 1.1.1.1
     port: 853
     timeout: 5
