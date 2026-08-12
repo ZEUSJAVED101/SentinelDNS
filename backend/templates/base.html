@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <meta
+        name="description"
+        content="SentinelDNS DNS Security Management Dashboard"
+    >
+
+    <meta
+        name="robots"
+        content="noindex, nofollow"
+    >
+
+    <title>
+        {% block title %}
+            SentinelDNS
+        {% endblock %}
+    </title>
+
+
+    <!-- ==================================================
+         Stylesheet
+         ================================================== -->
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for(
+            'static',
+            path='css/app.css'
+        ) }}"
+    >
+
+</head>
+
+
+<body>
+
+    <div class="app-shell">
+
+        <div class="app-layout">
+
+
+            <!-- ==================================================
+                 SIDEBAR
+                 ================================================== -->
+
+            <aside
+                class="sidebar"
+                id="sidebar"
+                aria-label="Main navigation"
+            >
+
+
+                <!-- Brand -->
+
+                <div class="sidebar-brand">
+
+                    <a
+                        href="/dashboard"
+                        class="brand-link"
+                        aria-label="SentinelDNS Dashboard"
+                    >
+
+                        <span
+                            class="brand-mark"
+                            aria-hidden="true"
+                        >
+                            S
+                        </span>
+
+                        <span class="brand-text">
+
+                            <span class="brand-name">
+                                SentinelDNS
+                            </span>
+
+                            <span class="brand-version">
+                                v1.0
+                            </span>
+
+                        </span>
+
+                    </a>
+
+                </div>
+
+
+                <!-- Navigation -->
+
+                <nav class="sidebar-nav">
+
+
+                    <!-- Overview -->
+
+                    <div class="nav-section">
+
+                        <span class="nav-section-title">
+                            Overview
+                        </span>
+
+
+                        <a
+                            href="/dashboard"
+                            class="nav-item active"
+                        >
+
+                            <span
+                                class="nav-icon"
+                                aria-hidden="true"
+                            >
+                                ◉
+                            </span>
+
+                            <span>
+                                Dashboard
+                            </span>
+
+                        </a>
+
+                    </div>
+
+
+                    <!-- DNS -->
+
+                    <div class="nav-section">
+
+                        <span class="nav-section-title">
+                            DNS Engine
+                        </span>
+
+
+                        <a
+                            href="#"
+                            class="nav-item"
+                        >
+
+                            <span
+                                class="nav-icon"
+                                aria-hidden="true"
+                            >
+                                ◌
+                            </span>
+
+                            <span>
+                                DNS Queries
+                            </span>
+
+                        </a>
+
+
+                        <a
+                            href="#"
+                            class="nav-item"
+                        >
+
+                            <span
+                                class="nav-icon"
+                                aria-hidden="true"
+                            >
+                                ↗
+                            </span>
+
+                            <span>
+                                Upstream DNS
+                            </span>
+
+                        </a>
+
+
+                        <a
+                            href="#"
+                            class="nav-item"
+                        >
+
+                            <span
+                                class="nav-icon"
+                                aria-hidden="true"
+                            >
+                                ◇
+                            </span>
+
+                            <span>
+                                Cache
+                            </span>
+
+                        </a>
+
+                    </div>
+
+
+                    <!-- Security -->
+
+                    <div class="nav-section">
+
+                        <span class="nav-section-title">
+                            Security
+                        </span>
+
+
+                        <a
+                            href="#"
+                            class="nav-item"
+                        >
+
+                            <span
+                                class="nav-icon"
+                                aria-hidden="true"
+                            >
+                                ◆
+                            </span>
+
+                            <span>
+                                Blocklists
+                            </span>
+
+                        </a>
+
+
+                        <a
+                            href="#"
+                            class="nav-item"
+                        >
+
+                            <span
+                                class="nav-icon"
+                                aria-hidden="true"
+                            >
+                                ⛨
+                            </span>
+
+                            <span>
+                                Filters
+                            </span>
+
+                        </a>
+
+
+                        <a
+                            href="#"
+                            class="nav-item"
+                        >
+
+                            <span
+                                class="nav-icon"
+                                aria-hidden="true"
+                            >
+                                !
+                            </span>
+
+                            <span>
+                                Security Events
+                            </span>
+
+                        </a>
+
+                    </div>
+
+
+                    <!-- Network -->
+
+                    <div class="nav-section">
+
+                        <span class="nav-section-title">
+                            Network
+                        </span>
+
+
+                        <a
+                            href="#"
+                            class="nav-item"
+                        >
+
+                            <span
+                                class="nav-icon"
+                                aria-hidden="true"
+                            >
+                                ⇄
+                            </span>
+
+                            <span>
+                                DHCP
+                            </span>
+
+                        </a>
+
+
+                        <a
+                            href="#"
+                            class="nav-item"
+                        >
+
+                            <span
+                                class="nav-icon"
+                                aria-hidden="true"
+                            >
+                                ▣
+                            </span>
+
+                            <span>
+                                Clients
+                            </span>
+
+                        </a>
+
+                    </div>
+
+
+                    <!-- System -->
+
+                    <div class="nav-section">
+
+                        <span class="nav-section-title">
+                            System
+                        </span>
+
+
+                        <a
+                            href="#"
+                            class="nav-item"
+                        >
+
+                            <span
+                                class="nav-icon"
+                                aria-hidden="true"
+                            >
+                                ⚙
+                            </span>
+
+                            <span>
+                                Settings
+                            </span>
+
+                        </a>
+
+
+                        <a
+                            href="#"
+                            class="nav-item"
+                        >
+
+                            <span
+                                class="nav-icon"
+                                aria-hidden="true"
+                            >
+                                ▤
+                            </span>
+
+                            <span>
+                                Audit Log
+                            </span>
+
+                        </a>
+
+                    </div>
+
+                </nav>
+
+
+                <!-- Sidebar status -->
+
+                <div class="sidebar-footer">
+
+                    <div class="sidebar-status">
+
+                        <span
+                            class="status-dot"
+                            aria-hidden="true"
+                        ></span>
+
+                        <span>
+                            DNS Engine Operational
+                        </span>
+
+                    </div>
+
+                </div>
+
+            </aside>
+
+
+            <!-- ==================================================
+                 MAIN CONTENT
+                 ================================================== -->
+
+            <main class="main-content">
+
+
+                <!-- ==================================================
+                     TOP BAR
+                     ================================================== -->
+
+                <header class="topbar">
+
+
+                    <div class="topbar-left">
+
+
+                        <!-- Mobile menu -->
+
+                        <button
+                            type="button"
+                            class="menu-button"
+                            id="menuButton"
+                            aria-label="Open navigation menu"
+                            aria-controls="sidebar"
+                            aria-expanded="false"
+                        >
+                            ☰
+                        </button>
+
+
+                        <!-- Page title -->
+
+                        <div>
+
+                            <div class="topbar-title">
+
+                                {% block page_title %}
+                                    SentinelDNS
+                                {% endblock %}
+
+                            </div>
+
+                            <div class="topbar-subtitle">
+
+                                DNS Security Management Platform
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- System status -->
+
+                    <div class="topbar-status">
+
+                        <div class="sidebar-status">
+
+                            <span
+                                class="status-dot"
+                                aria-hidden="true"
+                            ></span>
+
+                            <span>
+                                System Online
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                </header>
+
+
+                <!-- ==================================================
+                     PAGE
+                     ================================================== -->
+
+                <div class="page-content">
+
+                    {% block content %}
+
+                    {% endblock %}
+
+                </div>
+
+
+            </main>
+
+        </div>
+
+    </div>
+
+
+    <!-- ==================================================
+         Application JavaScript
+         ================================================== -->
+
+    <script
+        src="{{ url_for(
+            'static',
+            path='js/app.js'
+        ) }}"
+        defer
+    ></script>
+
+</body>
+
+</html>

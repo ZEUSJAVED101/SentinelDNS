@@ -3,14 +3,26 @@ Security dependencies.
 
 Provides reusable authentication and authorization dependencies
 for FastAPI routes.
+
+Authentication supports:
+
+- Authorization: Bearer <JWT>
+- Secure HttpOnly browser session cookie
+
+Security principles:
+
+- JWT is never exposed to frontend JavaScript through the cookie
+- Bearer authentication remains supported for API clients
+- Invalid credentials are rejected
+- Inactive users are rejected
+- Role-based authorization remains unchanged
 """
 
 from __future__ import annotations
 
 from typing import Callable
 
-from fastapi import Depends
-from fastapi.security import OAuth2PasswordBearer
+from fastapi import Depends, Request
 from sqlalchemy.orm import Session
 
 from backend.exceptions.auth import (
@@ -27,12 +39,10 @@ from database.models.user import User
 
 
 # ==========================================================
-# OAuth2 Scheme
+# Browser Session Cookie
 # ==========================================================
 
-oauth2_scheme = OAuth2PasswordBearer(
-    tokenUrl="/auth/login",
-)
+AUTH_COOKIE_NAME = "sentineldns_session"
 
 
 # ==========================================================
@@ -40,31 +50,106 @@ oauth2_scheme = OAuth2PasswordBearer(
 # ==========================================================
 
 def get_current_user(
-    token: str = Depends(oauth2_scheme),
+    request: Request,
     db: Session = Depends(get_db),
 ) -> User:
     """
     Validate the JWT and return the authenticated user.
+
+    Authentication order:
+
+    1. Authorization: Bearer <JWT>
+    2. HttpOnly browser session cookie
+
+    Bearer authentication takes priority so existing API
+    clients remain fully compatible.
     """
 
+    token: str | None = None
+
+    # ------------------------------------------------------
+    # 1. Authorization header
+    # ------------------------------------------------------
+
+    authorization = request.headers.get(
+        "Authorization",
+        "",
+    ).strip()
+
+    if authorization:
+
+        scheme, separator, credentials = (
+            authorization.partition(" ")
+        )
+
+        if (
+            separator
+            and scheme.lower() == "bearer"
+            and credentials.strip()
+        ):
+
+            token = credentials.strip()
+
+    # ------------------------------------------------------
+    # 2. Browser session cookie
+    # ------------------------------------------------------
+
     if not token:
+
+        cookie_token = request.cookies.get(
+            AUTH_COOKIE_NAME,
+        )
+
+        if cookie_token:
+
+            token = cookie_token.strip()
+
+    # ------------------------------------------------------
+    # No authentication supplied.
+    # ------------------------------------------------------
+
+    if not token:
+
         raise AuthenticationRequiredError()
 
-    payload = decode_access_token(token)
+    # ------------------------------------------------------
+    # Validate JWT.
+    # ------------------------------------------------------
 
-    username = payload.get("sub")
+    payload = decode_access_token(
+        token,
+    )
 
-    if username is None:
+    username = payload.get(
+        "sub",
+    )
+
+    if not username:
+
         raise InvalidTokenError()
 
-    repository = UserRepository(db)
+    # ------------------------------------------------------
+    # Load user from database.
+    # ------------------------------------------------------
 
-    user = repository.get_by_username(username)
+    repository = UserRepository(
+        db,
+    )
+
+    user = repository.get_by_username(
+        username,
+    )
 
     if user is None:
+
         raise InvalidTokenError()
 
+    # ------------------------------------------------------
+    # Verify account status.
+    # ------------------------------------------------------
+
     if not user.is_active:
+
         raise UserInactiveError()
 
     return user
@@ -74,16 +159,21 @@ def get_current_user(
 # Role-Based Authorization
 # ==========================================================
 
-def require_role(role: UserRole) -> Callable:
+def require_role(
+    role: UserRole,
+) -> Callable:
     """
     Factory for role-based authorization dependencies.
     """
 
     def dependency(
-        current_user: User = Depends(get_current_user),
+        current_user: User = Depends(
+            get_current_user,
+        ),
     ) -> User:
 
         if current_user.role != role:
+
             raise PermissionDeniedError()
 
         return current_user
@@ -91,4 +181,10 @@ def require_role(role: UserRole) -> Callable:
     return dependency
 
 
-require_admin = require_role(UserRole.ADMIN)
+# ==========================================================
+# Admin Authorization
+# ==========================================================
+
+require_admin = require_role(
+    UserRole.ADMIN,
+)

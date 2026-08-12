@@ -1,0 +1,904 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard — SentinelDNS{% endblock %}
+
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+
+<div class="dashboard-header">
+
+    <div>
+        <p class="eyebrow">NETWORK OVERVIEW</p>
+
+        <h2>Security &amp; DNS Overview</h2>
+
+        <p class="muted">
+            Monitor DNS activity, filtering, caching and network services.
+        </p>
+    </div>
+
+    <div class="dashboard-actions">
+
+        <button
+            class="btn btn-secondary"
+            type="button"
+            id="refreshDashboard"
+        >
+            ↻ Refresh
+        </button>
+
+    </div>
+
+</div>
+
+
+<!-- ======================================================
+     LIVE STATISTICS
+     ====================================================== -->
+
+<div class="stats-grid">
+
+    <!-- DNS -->
+
+    <article class="stat-card">
+
+        <div class="stat-icon dns-icon">
+            ◉
+        </div>
+
+        <div class="stat-content">
+
+            <span class="stat-label">
+                DNS ENGINE
+            </span>
+
+            <strong class="stat-value">
+
+                {% if dashboard.dns.available %}
+                    ON
+                {% else %}
+                    OFF
+                {% endif %}
+
+            </strong>
+
+            <span class="stat-meta positive">
+
+                {{ dashboard.dns.status|upper }}
+
+            </span>
+
+        </div>
+
+    </article>
+
+
+    <!-- CACHE -->
+
+    <article class="stat-card">
+
+        <div class="stat-icon cache-icon">
+            ◌
+        </div>
+
+        <div class="stat-content">
+
+            <span class="stat-label">
+                CACHE HIT RATE
+            </span>
+
+            <strong class="stat-value">
+
+                {% if dashboard.cache.available %}
+
+                    {{ "%.1f"|format(
+                        dashboard.cache.hit_ratio * 100
+                    ) }}%
+
+                {% else %}
+
+                    N/A
+
+                {% endif %}
+
+            </strong>
+
+            <span class="stat-meta">
+
+                {% if dashboard.cache.available %}
+
+                    {{ dashboard.cache.size }}
+                    cached entries
+
+                {% else %}
+
+                    Cache unavailable
+
+                {% endif %}
+
+            </span>
+
+        </div>
+
+    </article>
+
+
+    <!-- BLOCKLIST -->
+
+    <article class="stat-card">
+
+        <div class="stat-icon blocked-icon">
+            ◆
+        </div>
+
+        <div class="stat-content">
+
+            <span class="stat-label">
+                BLOCKLIST DOMAINS
+            </span>
+
+            <strong class="stat-value">
+
+                {{ "{:,}".format(
+                    dashboard.blocklists.total_domains
+                ) }}
+
+            </strong>
+
+            <span class="stat-meta">
+
+                {{ dashboard.blocklists.loaded_lists }}
+                active list(s)
+
+            </span>
+
+        </div>
+
+    </article>
+
+
+    <!-- TRANSPORT -->
+
+    <article class="stat-card">
+
+        <div class="stat-icon dhcp-icon">
+            ↗
+        </div>
+
+        <div class="stat-content">
+
+            <span class="stat-label">
+                UPSTREAM TRANSPORT
+            </span>
+
+            <strong class="stat-value">
+
+                {{ dashboard.transport.display_name }}
+
+            </strong>
+
+            <span class="stat-meta">
+
+                {% if dashboard.transport.secure %}
+                    Encrypted
+                {% else %}
+                    Standard DNS
+                {% endif %}
+
+            </span>
+
+        </div>
+
+    </article>
+
+</div>
+
+
+<!-- ======================================================
+     MAIN GRID
+     ====================================================== -->
+
+<div class="dashboard-grid">
+
+
+    <!-- QUERY ACTIVITY -->
+
+    <section class="panel activity-panel">
+
+        <div class="panel-header">
+
+            <div>
+
+                <span class="panel-kicker">
+                    DNS ACTIVITY
+                </span>
+
+                <h3>
+                    Query Activity
+                </h3>
+
+            </div>
+
+            <span class="live-badge">
+
+                <span class="status-dot"></span>
+
+                Live
+
+            </span>
+
+        </div>
+
+
+        <div class="chart-container">
+
+            <div class="chart-y-axis">
+
+                <span>500</span>
+                <span>400</span>
+                <span>300</span>
+                <span>200</span>
+                <span>100</span>
+                <span>0</span>
+
+            </div>
+
+
+            <div class="chart-area">
+
+                <div class="chart-grid-lines">
+
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                    <span></span>
+
+                </div>
+
+
+                <svg
+                    class="activity-chart"
+                    viewBox="0 0 800 260"
+                    preserveAspectRatio="none"
+                    aria-label="DNS query activity chart"
+                    role="img"
+                >
+
+                    <defs>
+
+                        <linearGradient
+                            id="queryGradient"
+                            x1="0"
+                            y1="0"
+                            x2="0"
+                            y2="1"
+                        >
+
+                            <stop
+                                offset="0%"
+                                stop-opacity="0.35"
+                            />
+
+                            <stop
+                                offset="100%"
+                                stop-opacity="0"
+                            />
+
+                        </linearGradient>
+
+                    </defs>
+
+
+                    <path
+                        class="chart-fill"
+                        d="M0,210
+                           C45,190 70,205 110,165
+                           C150,125 170,150 210,135
+                           C250,120 270,160 310,130
+                           C350,100 370,125 410,105
+                           C450,85 470,115 510,90
+                           C550,65 570,95 610,75
+                           C650,55 680,80 720,45
+                           C750,25 780,55 800,35
+                           L800,260
+                           L0,260 Z"
+                    />
+
+
+                    <path
+                        class="chart-line"
+                        d="M0,210
+                           C45,190 70,205 110,165
+                           C150,125 170,150 210,135
+                           C250,120 270,160 310,130
+                           C350,100 370,125 410,105
+                           C450,85 470,115 510,90
+                           C550,65 570,95 610,75
+                           C650,55 680,80 720,45
+                           C750,25 780,55 800,35"
+                    />
+
+                </svg>
+
+
+                <div class="chart-x-axis">
+
+                    <span>12 AM</span>
+                    <span>4 AM</span>
+                    <span>8 AM</span>
+                    <span>12 PM</span>
+                    <span>4 PM</span>
+                    <span>8 PM</span>
+                    <span>Now</span>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <p class="muted">
+
+            Query history will become live after
+            resolver statistics counters are added.
+
+        </p>
+
+    </section>
+
+
+    <!-- UPSTREAM -->
+
+    <section class="panel upstream-panel">
+
+        <div class="panel-header">
+
+            <div>
+
+                <span class="panel-kicker">
+                    DNS TRANSPORT
+                </span>
+
+                <h3>
+                    Upstream
+                </h3>
+
+            </div>
+
+            <span class="status-pill operational">
+                Configured
+            </span>
+
+        </div>
+
+
+        <div class="transport-card">
+
+            <div class="transport-icon">
+                ↗
+            </div>
+
+
+            <div class="transport-info">
+
+                <span>
+                    ACTIVE TRANSPORT
+                </span>
+
+                <strong>
+                    {{ dashboard.transport.display_name }}
+                </strong>
+
+                <small>
+
+                    {% if dashboard.transport.provider is defined %}
+
+                        {{ dashboard.transport.provider }}
+
+                    {% elif dashboard.transport.server is defined %}
+
+                        {{ dashboard.transport.server }}
+
+                    {% elif dashboard.transport.servers is defined %}
+
+                        {% if dashboard.transport.servers %}
+                            {{ dashboard.transport.servers[0] }}
+                        {% else %}
+                            No server configured
+                        {% endif %}
+
+                    {% else %}
+
+                        Configured upstream
+
+                    {% endif %}
+
+                </small>
+
+            </div>
+
+        </div>
+
+
+        <div class="upstream-details">
+
+            {% if dashboard.transport.transport == "doh" %}
+
+                <div class="detail-row">
+
+                    <span>
+                        Endpoint
+                    </span>
+
+                    <strong>
+                        {{ dashboard.transport.endpoint }}
+                    </strong>
+
+                </div>
+
+
+                <div class="detail-row">
+
+                    <span>
+                        Protocol
+                    </span>
+
+                    <strong>
+
+                        HTTPS /
+
+                        {% if dashboard.transport.http2 %}
+                            HTTP/2
+                        {% else %}
+                            HTTP/1.1
+                        {% endif %}
+
+                    </strong>
+
+                </div>
+
+
+                <div class="detail-row">
+
+                    <span>
+                        TLS Verification
+                    </span>
+
+                    <strong class="text-success">
+
+                        {% if dashboard.transport.tls_verification %}
+                            Enabled
+                        {% else %}
+                            Disabled
+                        {% endif %}
+
+                    </strong>
+
+                </div>
+
+
+            {% elif dashboard.transport.transport == "dot" %}
+
+                <div class="detail-row">
+
+                    <span>
+                        Server
+                    </span>
+
+                    <strong>
+                        {{ dashboard.transport.server }}
+                    </strong>
+
+                </div>
+
+
+                <div class="detail-row">
+
+                    <span>
+                        Port
+                    </span>
+
+                    <strong>
+                        {{ dashboard.transport.port }}
+                    </strong>
+
+                </div>
+
+
+                <div class="detail-row">
+
+                    <span>
+                        TLS Verification
+                    </span>
+
+                    <strong class="text-success">
+
+                        {% if dashboard.transport.tls_verification %}
+                            Enabled
+                        {% else %}
+                            Disabled
+                        {% endif %}
+
+                    </strong>
+
+                </div>
+
+
+            {% elif dashboard.transport.transport == "udp" %}
+
+                <div class="detail-row">
+
+                    <span>
+                        Server
+                    </span>
+
+                    <strong>
+
+                        {% if dashboard.transport.servers %}
+
+                            {{ dashboard.transport.servers[0] }}
+
+                        {% else %}
+
+                            Not configured
+
+                        {% endif %}
+
+                    </strong>
+
+                </div>
+
+
+                <div class="detail-row">
+
+                    <span>
+                        Protocol
+                    </span>
+
+                    <strong>
+                        DNS / UDP
+                    </strong>
+
+                </div>
+
+
+                <div class="detail-row">
+
+                    <span>
+                        Encryption
+                    </span>
+
+                    <strong>
+                        Disabled
+                    </strong>
+
+                </div>
+
+            {% endif %}
+
+
+            <div class="detail-row">
+
+                <span>
+                    Security
+                </span>
+
+                <strong class="text-success">
+
+                    {% if dashboard.transport.secure %}
+                        Encrypted
+                    {% else %}
+                        Unencrypted
+                    {% endif %}
+
+                </strong>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <!-- FILTERS -->
+
+    <section class="panel filtering-panel">
+
+        <div class="panel-header">
+
+            <div>
+
+                <span class="panel-kicker">
+                    SECURITY
+                </span>
+
+                <h3>
+                    Filtering
+                </h3>
+
+            </div>
+
+            <span class="status-pill enabled">
+                Active
+            </span>
+
+        </div>
+
+
+        <div class="filter-list">
+
+            {% for dns_filter in dashboard.filters %}
+
+                <div class="filter-item">
+
+                    <div class="filter-name">
+
+                        <span
+                            class="filter-indicator"
+                        ></span>
+
+                        <span>
+                            {{ dns_filter.name }}
+                        </span>
+
+                    </div>
+
+
+                    <strong>
+
+                        {% if dns_filter.blocklist_size
+                              is not none %}
+
+                            {{ "{:,}".format(
+                                dns_filter.blocklist_size
+                            ) }}
+
+                        {% else %}
+
+                            Active
+
+                        {% endif %}
+
+                    </strong>
+
+                </div>
+
+            {% else %}
+
+                <div class="filter-item">
+
+                    <div class="filter-name">
+
+                        <span
+                            class="filter-indicator"
+                        ></span>
+
+                        <span>
+                            No filters detected
+                        </span>
+
+                    </div>
+
+                </div>
+
+            {% endfor %}
+
+        </div>
+
+    </section>
+
+
+    <!-- BLOCKLIST -->
+
+    <section class="panel domains-panel">
+
+        <div class="panel-header">
+
+            <div>
+
+                <span class="panel-kicker">
+                    SECURITY
+                </span>
+
+                <h3>
+                    Blocklist Status
+                </h3>
+
+            </div>
+
+        </div>
+
+
+        <div class="domain-table">
+
+            <div class="table-row table-header">
+
+                <span>
+                    METRIC
+                </span>
+
+                <span>
+                    VALUE
+                </span>
+
+                <span>
+                    STATUS
+                </span>
+
+            </div>
+
+
+            <div class="table-row">
+
+                <span class="domain-name">
+                    Loaded blocklists
+                </span>
+
+                <span class="filter-tag">
+
+                    {{ dashboard.blocklists.loaded_lists }}
+
+                </span>
+
+                <span class="table-time">
+                    Active
+                </span>
+
+            </div>
+
+
+            <div class="table-row">
+
+                <span class="domain-name">
+                    Blocked domains
+                </span>
+
+                <span class="filter-tag">
+
+                    {{ "{:,}".format(
+                        dashboard.blocklists.total_domains
+                    ) }}
+
+                </span>
+
+                <span class="table-time">
+                    Loaded
+                </span>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <!-- RUNTIME -->
+
+    <section class="panel dhcp-panel">
+
+        <div class="panel-header">
+
+            <div>
+
+                <span class="panel-kicker">
+                    RUNTIME
+                </span>
+
+                <h3>
+                    DNS Runtime
+                </h3>
+
+            </div>
+
+            <span class="status-pill operational">
+                Running
+            </span>
+
+        </div>
+
+
+        <div class="dhcp-summary">
+
+            <div class="dhcp-number">
+
+                <strong>
+                    {{ dashboard.cache.size }}
+                </strong>
+
+                <span>
+                    Cached entries
+                </span>
+
+            </div>
+
+
+            <div class="dhcp-number">
+
+                <strong>
+                    {{ dashboard.blocklists.total_domains }}
+                </strong>
+
+                <span>
+                    Blocked domains
+                </span>
+
+            </div>
+
+        </div>
+
+
+        <div class="progress-wrapper">
+
+            <div class="progress-label">
+
+                <span>
+                    Cache hit ratio
+                </span>
+
+                <strong>
+
+                    {% if dashboard.cache.available %}
+
+                        {{ "%.1f"|format(
+                            dashboard.cache.hit_ratio * 100
+                        ) }}%
+
+                    {% else %}
+
+                        N/A
+
+                    {% endif %}
+
+                </strong>
+
+            </div>
+
+
+            <div class="progress-bar">
+
+                <span
+                    class="progress-fill"
+                    data-progress="{{
+                        dashboard.cache.hit_ratio * 100
+                    }}"
+                ></span>
+
+            </div>
+
+        </div>
+
+
+        <div class="dhcp-footer">
+
+            <span>
+                Active transport
+            </span>
+
+            <strong>
+                {{ dashboard.transport.display_name }}
+            </strong>
+
+        </div>
+
+    </section>
+
+</div>
+
+
+<div class="dashboard-footer">
+
+    <span>
+        SentinelDNS Network Security Platform
+    </span>
+
+    <span>
+        Live Runtime Dashboard
+    </span>
+
+</div>
+
+{% endblock %}
