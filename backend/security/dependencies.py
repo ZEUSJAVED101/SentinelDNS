@@ -1,21 +1,23 @@
 """
-Security dependencies.
+SentinelDNS Security Dependencies
 
-Provides reusable authentication and authorization dependencies
-for FastAPI routes.
+Responsibilities:
+- Authenticate browser sessions
+- Authenticate Bearer-token API clients
+- Validate JWT access tokens
+- Verify the current user exists and is active
+- Enforce role-based authorization
 
-Authentication supports:
+Security model:
 
-- Authorization: Bearer <JWT>
-- Secure HttpOnly browser session cookie
-
-Security principles:
-
-- JWT is never exposed to frontend JavaScript through the cookie
-- Bearer authentication remains supported for API clients
-- Invalid credentials are rejected
-- Inactive users are rejected
-- Role-based authorization remains unchanged
+- Browser JWT is stored only in an HttpOnly cookie.
+- API clients may use Authorization: Bearer <JWT>.
+- Browser sessions are bound to the current SentinelDNS
+  server instance.
+- Restarting the SentinelDNS server invalidates old browser
+  sessions.
+- Client addresses and DNS query information are never
+  handled here.
 """
 
 from __future__ import annotations
@@ -39,14 +41,25 @@ from database.models.user import User
 
 
 # ==========================================================
-# Browser Session Cookie
+# Browser Authentication Cookie
 # ==========================================================
 
 AUTH_COOKIE_NAME = "sentineldns_session"
 
+# Cookie containing the current server-instance identifier.
+#
+# This is NOT the JWT.
+#
+# It allows SentinelDNS to invalidate all browser sessions
+# whenever the application is restarted.
+
+SERVER_SESSION_COOKIE_NAME = (
+    "sentineldns_server_session"
+)
+
 
 # ==========================================================
-# Current User Dependency
+# Current User
 # ==========================================================
 
 def get_current_user(
@@ -54,21 +67,33 @@ def get_current_user(
     db: Session = Depends(get_db),
 ) -> User:
     """
-    Validate the JWT and return the authenticated user.
+    Validate authentication and return the current user.
 
     Authentication order:
 
     1. Authorization: Bearer <JWT>
-    2. HttpOnly browser session cookie
+    2. HttpOnly browser JWT cookie
 
-    Bearer authentication takes priority so existing API
-    clients remain fully compatible.
+    Browser authentication additionally requires the current
+    server-session cookie.
+
+    Therefore:
+
+        Server restart
+              ↓
+        New server session ID
+              ↓
+        Old browser session rejected
+              ↓
+        User must log in again
     """
 
     token: str | None = None
 
     # ------------------------------------------------------
     # 1. Authorization header
+    #
+    # Bearer authentication is intended for API clients.
     # ------------------------------------------------------
 
     authorization = request.headers.get(
@@ -87,12 +112,13 @@ def get_current_user(
             and scheme.lower() == "bearer"
             and credentials.strip()
         ):
-
             token = credentials.strip()
 
     # ------------------------------------------------------
-    # 2. Browser session cookie
+    # 2. Browser session
     # ------------------------------------------------------
+
+    using_browser_cookie = False
 
     if not token:
 
@@ -103,6 +129,7 @@ def get_current_user(
         if cookie_token:
 
             token = cookie_token.strip()
+            using_browser_cookie = True
 
     # ------------------------------------------------------
     # No authentication supplied.
@@ -113,7 +140,38 @@ def get_current_user(
         raise AuthenticationRequiredError()
 
     # ------------------------------------------------------
-    # Validate JWT.
+    # Browser sessions must belong to the current server
+    # instance.
+    #
+    # Bearer API clients are intentionally not subject to
+    # this browser-session requirement.
+    # ------------------------------------------------------
+
+    if using_browser_cookie:
+
+        current_server_session = getattr(
+            request.app.state,
+            "server_session_id",
+            None,
+        )
+
+        browser_server_session = (
+            request.cookies.get(
+                SERVER_SESSION_COOKIE_NAME,
+            )
+        )
+
+        if (
+            not current_server_session
+            or not browser_server_session
+            or browser_server_session
+            != current_server_session
+        ):
+
+            raise AuthenticationRequiredError()
+
+    # ------------------------------------------------------
+    # Decode and validate JWT.
     # ------------------------------------------------------
 
     payload = decode_access_token(

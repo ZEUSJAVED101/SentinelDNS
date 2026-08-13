@@ -10,13 +10,15 @@ Responsibilities:
 - Forward allowed queries upstream
 - Cache successful responses
 - Record aggregate runtime metrics
+- Record bounded, sanitized recent-query audit data
 
 Security principles:
 
 - Never expose raw DNS packets through metrics
-- Never store client addresses in metrics
-- Never store queried domains in metrics
-- Metrics must never interrupt DNS resolution
+- Never store client addresses
+- Never store authentication data
+- Query audit memory is strictly bounded
+- Metrics and audit logging must never interrupt DNS resolution
 - Fail-safe DNS response handling
 """
 
@@ -29,6 +31,13 @@ from dns_engine.filters.manager import FilterManager
 from dns_engine.logger import DNSLogger
 from dns_engine.metrics import DNSMetrics
 from dns_engine.parser import DNSParser
+from dns_engine.query_log import (
+    CacheStatus,
+    DNSQueryLog,
+    QueryStatus,
+    UpstreamStatus,
+    query_log,
+)
 from dns_engine.response import DNSResponseBuilder
 from dns_engine.upstream import DNSUpstream
 
@@ -37,8 +46,19 @@ class DNSResolver:
     """
     Main DNS resolver pipeline.
 
-    DNSMetrics is optional so the resolver remains easy to test
-    and does not require dashboard infrastructure.
+    Parse
+        ↓
+    Cache
+        ↓
+    Filter
+        ↓
+    Logger
+        ↓
+    Upstream
+        ↓
+    Cache Store
+        ↓
+    Response
     """
 
     def __init__(
@@ -65,35 +85,65 @@ class DNSResolver:
             else DNSMetrics()
         )
 
-    # ==========================================================
-    # METRICS HELPERS
-    # ==========================================================
+        # --------------------------------------------------
+        # Shared bounded query audit buffer.
+        # --------------------------------------------------
+
+        self.query_log: DNSQueryLog = query_log
+
+    # ======================================================
+    # RESPONSE CODE
+    # ======================================================
+
+    @staticmethod
+    def _get_rcode(
+        response: bytes,
+    ) -> int | None:
+        """
+        Extract DNS RCODE from a DNS response.
+
+        Returns None when the response is too short.
+        """
+
+        try:
+
+            if len(response) < 4:
+                return None
+
+            return response[3] & 0x0F
+
+        except Exception:
+
+            return None
+
+    # ======================================================
+    # METRICS
+    # ======================================================
 
     def _record_response_metrics(
         self,
         response: bytes,
     ) -> None:
         """
-        Record DNS response metrics.
+        Record DNS response-code metrics.
 
-        Metrics are intentionally isolated from the DNS
-        processing path. A metrics failure must never cause
-        DNS resolution to fail.
+        Metrics must never break DNS resolution.
         """
 
         try:
 
-            if len(response) < 4:
-                return
+            rcode = self._get_rcode(
+                response,
+            )
 
-            rcode = response[3] & 0x0F
+            if rcode is None:
+                return
 
             self.metrics.record_rcode(
                 rcode,
             )
 
         except Exception:
-            # Observability must never break DNS resolution.
             return
 
     def _record_latency(
@@ -102,8 +152,6 @@ class DNSResolver:
     ) -> None:
         """
         Record query processing latency.
-
-        Metrics failures are intentionally ignored.
         """
 
         try:
@@ -118,56 +166,170 @@ class DNSResolver:
             )
 
         except Exception:
-            # Never allow metrics to affect DNS.
             return
 
-    # ==========================================================
+    # ======================================================
+    # QUERY TYPE
+    # ======================================================
+
+    @staticmethod
+    def _query_type(
+        query,
+    ) -> int:
+        """
+        Safely obtain the DNS query type.
+        """
+
+        value = getattr(
+            query,
+            "query_type",
+            None,
+        )
+
+        if value is None:
+            value = getattr(
+                query,
+                "qtype",
+                None,
+            )
+
+        if value is None:
+            value = getattr(
+                query,
+                "record_type",
+                None,
+            )
+
+        if value is None:
+            return 1
+
+        try:
+
+            return int(value)
+
+        except (TypeError, ValueError):
+
+            return 1
+
+    # ======================================================
+    # QUERY CLASS
+    # ======================================================
+
+    @staticmethod
+    def _query_class(
+        query,
+    ) -> int:
+        """
+        Safely obtain the DNS query class.
+        """
+
+        value = getattr(
+            query,
+            "query_class",
+            None,
+        )
+
+        if value is None:
+            value = getattr(
+                query,
+                "qclass",
+                None,
+            )
+
+        if value is None:
+            return 1
+
+        try:
+
+            return int(value)
+
+        except (TypeError, ValueError):
+
+            return 1
+
+    # ======================================================
+    # QUERY AUDIT
+    # ======================================================
+
+    def _record_query_event(
+        self,
+        *,
+        query,
+        started_at: float,
+        status: QueryStatus,
+        cache: CacheStatus,
+        upstream: UpstreamStatus,
+        response: bytes | None = None,
+    ) -> None:
+        """
+        Record one sanitized DNS query event.
+
+        Audit failures are intentionally ignored because
+        observability must never break DNS resolution.
+        """
+
+        try:
+
+            latency_ms = (
+                time.perf_counter()
+                - started_at
+            ) * 1000.0
+
+            rcode = None
+
+            if response:
+
+                rcode = self._get_rcode(
+                    response,
+                )
+
+            self.query_log.record(
+                domain=query.domain,
+                query_type=self._query_type(
+                    query,
+                ),
+                query_class=self._query_class(
+                    query,
+                ),
+                status=status,
+                cache=cache,
+                upstream=upstream,
+                rcode=rcode,
+                latency_ms=latency_ms,
+            )
+
+        except Exception:
+            # Audit logging must never affect DNS.
+            return
+
+    # ======================================================
     # RESOLVE
-    # ==========================================================
+    # ======================================================
 
     def resolve(
         self,
         packet: bytes,
     ) -> bytes:
         """
-        Process a DNS query.
-
-        The processing pipeline is:
-
-        Parse
-            ↓
-        Cache
-            ↓
-        Filters
-            ↓
-        Logger
-            ↓
-        Upstream
-            ↓
-        Cache Store
-            ↓
-        Response
+        Process one DNS query.
         """
 
         started_at = time.perf_counter()
 
-        # ------------------------------------------------------
-        # Record incoming query.
-        #
-        # No packet data is stored by DNSMetrics.
-        # ------------------------------------------------------
+        # --------------------------------------------------
+        # Aggregate query counter.
+        # --------------------------------------------------
 
         try:
 
             self.metrics.record_query()
 
         except Exception:
-            # Metrics must never interrupt DNS processing.
             pass
 
-        # ======================================================
-        # PARSE DNS PACKET
-        # ======================================================
+        # ==================================================
+        # PARSE
+        # ==================================================
 
         try:
 
@@ -215,9 +377,9 @@ class DNSResolver:
 
             return response
 
-        # ======================================================
+        # ==================================================
         # QUERY INFORMATION
-        # ======================================================
+        # ==================================================
 
         print(
             "\n========================================"
@@ -235,9 +397,9 @@ class DNSResolver:
             f"Domain : {query.domain}"
         )
 
-        # ======================================================
+        # ==================================================
         # CACHE LOOKUP
-        # ======================================================
+        # ==================================================
 
         cached = self.cache.lookup(
             query,
@@ -264,6 +426,19 @@ class DNSResolver:
                 cached,
             )
 
+            # --------------------------------------------------
+            # Cache HIT.
+            # --------------------------------------------------
+
+            self._record_query_event(
+                query=query,
+                started_at=started_at,
+                status="ALLOWED",
+                cache="HIT",
+                upstream="NOT_USED",
+                response=cached,
+            )
+
             self._record_latency(
                 started_at,
             )
@@ -281,9 +456,9 @@ class DNSResolver:
         except Exception:
             pass
 
-        # ======================================================
-        # FILTER PIPELINE
-        # ======================================================
+        # ==================================================
+        # FILTER
+        # ==================================================
 
         decision = self.filter_manager.evaluate(
             query,
@@ -319,6 +494,19 @@ class DNSResolver:
                 response,
             )
 
+            # --------------------------------------------------
+            # Blocked query.
+            # --------------------------------------------------
+
+            self._record_query_event(
+                query=query,
+                started_at=started_at,
+                status="BLOCKED",
+                cache="MISS",
+                upstream="NOT_USED",
+                response=response,
+            )
+
             self._record_latency(
                 started_at,
             )
@@ -336,17 +524,23 @@ class DNSResolver:
         except Exception:
             pass
 
-        # ======================================================
-        # LOG DNS QUERY
-        # ======================================================
+        # ==================================================
+        # LOGGER
+        # ==================================================
 
-        self.logger.log(
-            query,
-        )
+        try:
 
-        # ======================================================
-        # UPSTREAM RESOLUTION
-        # ======================================================
+            self.logger.log(
+                query,
+            )
+
+        except Exception:
+            # Logging must never break DNS.
+            pass
+
+        # ==================================================
+        # UPSTREAM
+        # ==================================================
 
         try:
 
@@ -383,15 +577,28 @@ class DNSResolver:
                 response,
             )
 
+            # --------------------------------------------------
+            # Upstream failure.
+            # --------------------------------------------------
+
+            self._record_query_event(
+                query=query,
+                started_at=started_at,
+                status="ALLOWED",
+                cache="MISS",
+                upstream="FAILED",
+                response=response,
+            )
+
             self._record_latency(
                 started_at,
             )
 
             return response
 
-        # ======================================================
+        # ==================================================
         # UPSTREAM SUCCESS
-        # ======================================================
+        # ==================================================
 
         try:
 
@@ -400,22 +607,28 @@ class DNSResolver:
         except Exception:
             pass
 
-        # ======================================================
-        # RESPONSE CODE METRICS
-        # ======================================================
+        # ==================================================
+        # RESPONSE METRICS
+        # ==================================================
 
         self._record_response_metrics(
             response,
         )
 
-        # ======================================================
-        # CACHE SUCCESSFUL RESPONSE
-        # ======================================================
+        # ==================================================
+        # CACHE
+        # ==================================================
 
-        self.cache.store(
-            query,
-            response,
-        )
+        try:
+
+            self.cache.store(
+                query,
+                response,
+            )
+
+        except Exception:
+            # Cache failure must never break DNS.
+            pass
 
         print(
             "Upstream : SUCCESS"
@@ -425,9 +638,22 @@ class DNSResolver:
             "========================================\n"
         )
 
-        # ======================================================
+        # ==================================================
+        # QUERY AUDIT
+        # ==================================================
+
+        self._record_query_event(
+            query=query,
+            started_at=started_at,
+            status="ALLOWED",
+            cache="MISS",
+            upstream="SUCCESS",
+            response=response,
+        )
+
+        # ==================================================
         # LATENCY
-        # ======================================================
+        # ==================================================
 
         self._record_latency(
             started_at,

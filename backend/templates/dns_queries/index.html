@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<section class="page-header">
+    <div>
+        <p class="eyebrow">DNS ENGINE</p>
+        <h1>DNS Queries</h1>
+        <p class="page-description">
+            Monitor recent DNS activity, filtering decisions,
+            cache behavior and upstream resolution.
+        </p>
+    </div>
+
+    <div class="page-actions">
+        <span id="query-status" class="status-badge">
+            Loading
+        </span>
+
+        <button
+            id="refresh-queries"
+            class="secondary-button"
+            type="button"
+        >
+            ↻ Refresh
+        </button>
+    </div>
+</section>
+
+
+<!-- ====================================================== -->
+<!-- SUMMARY -->
+<!-- ====================================================== -->
+
+<section class="query-summary">
+
+    <article class="query-stat">
+        <span>Total shown</span>
+        <strong id="query-count">0</strong>
+    </article>
+
+    <article class="query-stat">
+        <span>Allowed</span>
+        <strong id="allowed-count">0</strong>
+    </article>
+
+    <article class="query-stat">
+        <span>Blocked</span>
+        <strong id="blocked-count">0</strong>
+    </article>
+
+    <article class="query-stat">
+        <span>Cache hits</span>
+        <strong id="cache-hit-count">0</strong>
+    </article>
+
+    <article class="query-stat">
+        <span>Cache misses</span>
+        <strong id="cache-miss-count">0</strong>
+    </article>
+
+</section>
+
+
+<!-- ====================================================== -->
+<!-- FILTER BAR -->
+<!-- ====================================================== -->
+
+<section class="query-toolbar">
+
+    <label class="search-wrapper">
+        <span class="sr-only">
+            Search DNS queries
+        </span>
+
+        <input
+            id="query-search"
+            type="search"
+            maxlength="253"
+            autocomplete="off"
+            placeholder="Search domain..."
+        >
+    </label>
+
+    <label>
+        <span class="sr-only">
+            Filter query status
+        </span>
+
+        <select id="status-filter">
+            <option value="ALL">All status</option>
+            <option value="ALLOWED">Allowed</option>
+            <option value="BLOCKED">Blocked</option>
+            <option value="ERROR">Error</option>
+        </select>
+    </label>
+
+    <label>
+        <span class="sr-only">
+            Filter cache status
+        </span>
+
+        <select id="cache-filter">
+            <option value="ALL">All cache</option>
+            <option value="HIT">Cache HIT</option>
+            <option value="MISS">Cache MISS</option>
+            <option value="NOT_USED">Not used</option>
+        </select>
+    </label>
+
+</section>
+
+
+<!-- ====================================================== -->
+<!-- QUERY TABLE -->
+<!-- ====================================================== -->
+
+<section class="panel query-panel">
+
+    <div class="panel-header">
+        <div>
+            <p class="eyebrow">LIVE ACTIVITY</p>
+            <h2>Recent Queries</h2>
+        </div>
+
+        <span id="last-updated">
+            Never
+        </span>
+    </div>
+
+    <div class="table-wrapper">
+
+        <table class="query-table">
+
+            <thead>
+                <tr>
+                    <th>Domain</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                    <th>Cache</th>
+                    <th>Upstream</th>
+                    <th>RCODE</th>
+                    <th>Latency</th>
+                    <th>Time</th>
+                </tr>
+            </thead>
+
+            <tbody id="query-table-body">
+
+                <tr>
+                    <td
+                        colspan="8"
+                        class="table-message"
+                    >
+                        Loading DNS queries...
+                    </td>
+                </tr>
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</section>
+
+
+<!-- ====================================================== -->
+<!-- SECURITY NOTE -->
+<!-- ====================================================== -->
+
+<section class="security-note">
+
+    <div class="security-note-icon">
+        ✓
+    </div>
+
+    <div>
+        <strong>Privacy-safe query monitoring</strong>
+
+        <p>
+            The dashboard receives sanitized DNS metadata only.
+            Client addresses and raw DNS packets are never exposed
+            through this view.
+        </p>
+    </div>
+
+</section>
+
+
+<link
+    rel="stylesheet"
+    href="/static/css/dns-queries.css"
+>
+
+<script
+    src="/static/js/dns-queries.js"
+    defer
+></script>
+
+{% endblock %}

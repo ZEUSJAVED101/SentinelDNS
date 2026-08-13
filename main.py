@@ -3,36 +3,54 @@ SentinelDNS Entry Point
 
 Responsibilities:
 
-- Initialize the database
-- Start/stop the DNS engine
-- Create the FastAPI application
+- Initialize database
+- Create SentinelDNS server session
+- Start/stop DNS engine
+- Create FastAPI application
 - Register API routers
-- Register exception handlers
-- Serve the SentinelDNS dashboard
-- Serve static frontend assets
-- Share one DNSResolver instance
-- Share the same resolver with DashboardService
+- Serve login page
+- Serve dashboard
+- Serve DNS queries page
+- Expose dashboard API
+- Apply security headers
 """
 
 from __future__ import annotations
 
+import secrets
 import threading
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Any
 
-from fastapi import FastAPI, Request
-from fastapi.responses import Response
+from fastapi import (
+    Depends,
+    FastAPI,
+    Request,
+    Response,
+)
+from fastapi.responses import (
+    JSONResponse,
+    RedirectResponse,
+)
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from backend.api.auth import router as auth_router
+from backend.api.dns_queries import (
+    router as dns_queries_router,
+)
 from backend.exceptions.handlers import (
     register_exception_handlers,
 )
 from backend.services.dashboard_service import (
     DashboardService,
 )
+from backend.security.dependencies import (
+    get_current_user,
+)
 from database.database import init_database
+from database.models.user import User
 from dns_engine.resolver import DNSResolver
 from dns_engine.server import DNSServer
 
@@ -67,188 +85,58 @@ init_database()
 # SECURITY HEADERS
 # ==========================================================
 
-SECURITY_HEADERS = {
+COMMON_SECURITY_HEADERS = {
     "X-Content-Type-Options": "nosniff",
-
     "X-Frame-Options": "DENY",
-
     "Referrer-Policy": "no-referrer",
-
     "Permissions-Policy": (
         "camera=(), "
         "microphone=(), "
         "geolocation=(), "
         "payment=()"
     ),
-
-    "Content-Security-Policy": (
-        "default-src 'self'; "
-        "base-uri 'self'; "
-        "form-action 'self'; "
-        "frame-ancestors 'none'; "
-        "object-src 'none'; "
-        "script-src 'self'; "
-        "style-src 'self'; "
-        "img-src 'self' data:;"
-    ),
 }
 
 
-# ==========================================================
-# FASTAPI LIFESPAN
-# ==========================================================
+APPLICATION_CSP = (
+    "default-src 'self'; "
+    "base-uri 'self'; "
+    "form-action 'self'; "
+    "frame-ancestors 'none'; "
+    "object-src 'none'; "
+    "script-src 'self'; "
+    "style-src 'self'; "
+    "img-src 'self' data:; "
+    "connect-src 'self';"
+)
 
-@asynccontextmanager
-async def lifespan(
-    app: FastAPI,
-):
-    """
-    Start and stop SentinelDNS runtime services.
 
-    IMPORTANT:
-
-    Exactly ONE DNSResolver is created.
-
-    The same resolver is shared by:
-
-        DNS server
-             +
-        Dashboard service
-
-    This ensures dashboard metrics represent the
-    actual DNS engine.
-    """
-
-    print()
-    print("========================================")
-    print(" SentinelDNS Starting")
-    print("========================================")
-
-    # ------------------------------------------------------
-    # Create ONE DNS resolver.
-    # ------------------------------------------------------
-
-    dns_resolver = DNSResolver()
-
-    app.state.dns_resolver = dns_resolver
-
-    print(
-        "✓ DNS Resolver created"
-    )
-
-    # ------------------------------------------------------
-    # Create dashboard service using SAME resolver.
-    # ------------------------------------------------------
-
-    dashboard_service = DashboardService(
-        resolver=dns_resolver,
-    )
-
-    app.state.dashboard_service = (
-        dashboard_service
-    )
-
-    print(
-        "✓ Dashboard service connected"
-    )
-
-    # ------------------------------------------------------
-    # Create DNS server using SAME resolver.
-    # ------------------------------------------------------
-
-    dns_server = DNSServer(
-        host="127.0.0.1",
-        port=53,
-        resolver=dns_resolver,
-    )
-
-    app.state.dns_server = dns_server
-
-    print(
-        "✓ DNS Server starting"
-    )
-
-    # ------------------------------------------------------
-    # Start DNS server in background.
-    # ------------------------------------------------------
-
-    dns_thread = threading.Thread(
-        target=dns_server.start,
-        daemon=True,
-        name="sentineldns-dns",
-    )
-
-    app.state.dns_thread = dns_thread
-
-    dns_thread.start()
-
-    print(
-        "✓ DNS listening on 127.0.0.1:53"
-    )
-
-    print(
-        "========================================"
-    )
-
-    try:
-
-        yield
-
-    finally:
-
-        print()
-        print(
-            "========================================"
-        )
-        print(
-            " SentinelDNS Shutting Down"
-        )
-        print(
-            "========================================"
-        )
-
-        # --------------------------------------------------
-        # Stop DNS server.
-        # --------------------------------------------------
-
-        try:
-
-            dns_server.stop()
-
-        except Exception:
-
-            pass
-
-        # --------------------------------------------------
-        # Wait briefly for DNS thread.
-        # --------------------------------------------------
-
-        try:
-
-            dns_thread.join(
-                timeout=2.0,
-            )
-
-        except Exception:
-
-            pass
-
-        print(
-            "✓ SentinelDNS stopped"
-        )
+SWAGGER_CSP = (
+    "default-src 'self'; "
+    "base-uri 'self'; "
+    "form-action 'self'; "
+    "frame-ancestors 'none'; "
+    "object-src 'none'; "
+    "script-src 'self' "
+    "https://cdn.jsdelivr.net "
+    "'unsafe-inline'; "
+    "style-src 'self' "
+    "https://cdn.jsdelivr.net "
+    "'unsafe-inline'; "
+    "img-src 'self' data: "
+    "https://fastapi.tiangolo.com; "
+    "connect-src 'self';"
+)
 
 
 # ==========================================================
-# FASTAPI APPLICATION
+# APPLICATION
 # ==========================================================
 
 app = FastAPI(
     title="SentinelDNS API",
     version="1.0.0",
-    description=(
-        "DNS Filtering and Management System"
-    ),
-    lifespan=lifespan,
+    description="DNS Filtering and Management System",
 )
 
 
@@ -262,18 +150,24 @@ async def security_headers(
     call_next,
 ):
     """
-    Add security headers to every HTTP response.
+    Apply security headers.
     """
 
     response = await call_next(
         request,
     )
 
-    for name, value in SECURITY_HEADERS.items():
+    for name, value in COMMON_SECURITY_HEADERS.items():
+        response.headers[name] = value
 
+    if request.url.path.startswith("/docs"):
         response.headers[
-            name
-        ] = value
+            "Content-Security-Policy"
+        ] = SWAGGER_CSP
+    else:
+        response.headers[
+            "Content-Security-Policy"
+        ] = APPLICATION_CSP
 
     return response
 
@@ -283,9 +177,8 @@ async def security_headers(
 # ==========================================================
 
 if not STATIC_DIRECTORY.is_dir():
-
     raise RuntimeError(
-        "Static directory not found: "
+        f"Static directory not found: "
         f"{STATIC_DIRECTORY}"
     )
 
@@ -303,9 +196,8 @@ app.mount(
 # ==========================================================
 
 if not TEMPLATES_DIRECTORY.is_dir():
-
     raise RuntimeError(
-        "Templates directory not found: "
+        f"Templates directory not found: "
         f"{TEMPLATES_DIRECTORY}"
     )
 
@@ -331,6 +223,161 @@ app.include_router(
     auth_router,
 )
 
+app.include_router(
+    dns_queries_router,
+)
+
+
+# ==========================================================
+# APPLICATION LIFESPAN
+# ==========================================================
+
+@asynccontextmanager
+async def lifespan(
+    application: FastAPI,
+):
+    """
+    Start and stop SentinelDNS.
+
+    Every application start receives a fresh random
+    server-session identifier.
+
+    Consequently, browser sessions from an older server
+    instance are automatically invalidated.
+    """
+
+    # ------------------------------------------------------
+    # Generate fresh server session.
+    # ------------------------------------------------------
+
+    application.state.server_session_id = (
+        secrets.token_urlsafe(32)
+    )
+
+    print(
+        "\n"
+        "========================================\n"
+        " SentinelDNS Starting\n"
+        "========================================"
+    )
+
+    print(
+        "✓ New server session created"
+    )
+
+    # ------------------------------------------------------
+    # Create resolver.
+    # ------------------------------------------------------
+
+    dns_resolver = DNSResolver()
+
+    print(
+        "✓ DNS Resolver created"
+    )
+
+    # ------------------------------------------------------
+    # Create DNS server.
+    # ------------------------------------------------------
+
+    dns_server = DNSServer(
+        resolver=dns_resolver,
+    )
+
+    print(
+        "✓ DNS Server created"
+    )
+
+    # ------------------------------------------------------
+    # Dashboard service uses same resolver.
+    # ------------------------------------------------------
+
+    dashboard_service = DashboardService(
+        resolver=dns_resolver,
+    )
+
+    print(
+        "✓ Dashboard service connected"
+    )
+
+    # ------------------------------------------------------
+    # Store application state.
+    # ------------------------------------------------------
+
+    application.state.dns_resolver = (
+        dns_resolver
+    )
+
+    application.state.dns_server = (
+        dns_server
+    )
+
+    application.state.dashboard_service = (
+        dashboard_service
+    )
+
+    # ------------------------------------------------------
+    # Start DNS server.
+    # ------------------------------------------------------
+
+    dns_thread = threading.Thread(
+        target=dns_server.start,
+        daemon=True,
+        name="sentineldns-dns",
+    )
+
+    application.state.dns_thread = (
+        dns_thread
+    )
+
+    print(
+        "✓ DNS Server starting"
+    )
+
+    dns_thread.start()
+
+    print(
+        "✓ DNS listening on "
+        f"{dns_server.host}:{dns_server.port}"
+    )
+
+    print(
+        "========================================"
+    )
+
+    try:
+
+        yield
+
+    finally:
+
+        print(
+            "\n"
+            "========================================\n"
+            " SentinelDNS Shutting Down\n"
+            "========================================"
+        )
+
+        dns_server.stop()
+
+        dns_thread.join(
+            timeout=2.0,
+        )
+
+        print(
+            "✓ DNS Server stopped"
+        )
+
+        print(
+            "✓ SentinelDNS shutdown complete"
+        )
+
+
+# ==========================================================
+# ATTACH LIFESPAN
+# ==========================================================
+
+app.router.lifespan_context = lifespan
+
 
 # ==========================================================
 # ROOT
@@ -342,15 +389,90 @@ app.include_router(
 )
 async def root():
     """
-    Basic SentinelDNS health endpoint.
+    Always send the browser to the login entry point.
+
+    The login page itself does not authenticate the user.
+    Authentication occurs through POST /auth/login.
     """
 
-    return {
-        "application": "SentinelDNS",
-        "status": "running",
-        "dns_engine": "running",
-        "version": "1.0.0",
-    }
+    return RedirectResponse(
+        url="/login",
+        status_code=303,
+    )
+
+
+# ==========================================================
+# LOGIN PAGE
+# ==========================================================
+
+@app.get(
+    "/login",
+    tags=["Authentication"],
+    response_class=Response,
+)
+async def login_page(
+    request: Request,
+):
+    """
+    Render SentinelDNS login page.
+    """
+
+    return templates.TemplateResponse(
+        request=request,
+        name="login.html",
+        context={
+            "application": "SentinelDNS",
+            "version": "1.0.0",
+        },
+    )
+
+
+# ==========================================================
+# DASHBOARD API
+# ==========================================================
+
+@app.get(
+    "/api/dashboard/",
+    tags=["Dashboard"],
+)
+async def dashboard_api(
+    request: Request,
+    current_user: User = Depends(
+        get_current_user,
+    ),
+) -> JSONResponse:
+    """
+    Return authenticated dashboard information.
+    """
+
+    dashboard_service = getattr(
+        request.app.state,
+        "dashboard_service",
+        None,
+    )
+
+    if dashboard_service is None:
+
+        return JSONResponse(
+            content={
+                "status": "unavailable",
+            },
+            status_code=503,
+        )
+
+    data: dict[str, Any] = (
+        dashboard_service.get_dashboard_data()
+    )
+
+    return JSONResponse(
+        content=data,
+        headers={
+            "Cache-Control": (
+                "no-store, max-age=0"
+            ),
+            "Pragma": "no-cache",
+        },
+    )
 
 
 # ==========================================================
@@ -364,12 +486,12 @@ async def root():
 )
 async def dashboard(
     request: Request,
+    current_user: User = Depends(
+        get_current_user,
+    ),
 ):
     """
-    Render the SentinelDNS dashboard.
-
-    Dashboard data is generated from the SAME
-    DNSResolver used by the DNS server.
+    Render the authenticated SentinelDNS dashboard.
     """
 
     dashboard_service = getattr(
@@ -388,28 +510,9 @@ async def dashboard(
             media_type="text/plain",
         )
 
-    # ------------------------------------------------------
-    # Generate dashboard data.
-    # ------------------------------------------------------
-
     dashboard_data = (
         dashboard_service.get_dashboard_data()
     )
-
-    # ------------------------------------------------------
-    # Render dashboard.
-    #
-    # IMPORTANT:
-    # The Jinja template expects:
-    #
-    #     dashboard.dns
-    #     dashboard.cache
-    #     dashboard.transport
-    #     dashboard.filters
-    #     dashboard.blocklists
-    #
-    # Therefore "dashboard" MUST be supplied here.
-    # ------------------------------------------------------
 
     response = templates.TemplateResponse(
         request=request,
@@ -418,12 +521,9 @@ async def dashboard(
             "application": "SentinelDNS",
             "version": "1.0.0",
             "dashboard": dashboard_data,
+            "user": current_user,
         },
     )
-
-    # ------------------------------------------------------
-    # Dashboard data should not be cached.
-    # ------------------------------------------------------
 
     response.headers[
         "Cache-Control"
@@ -437,49 +537,30 @@ async def dashboard(
 
 
 # ==========================================================
-# DASHBOARD API
+# DNS QUERIES PAGE
 # ==========================================================
 
 @app.get(
-    "/api/dashboard/",
-    tags=["Dashboard"],
+    "/queries",
+    tags=["DNS Queries"],
+    response_class=Response,
 )
-async def dashboard_api(
+async def queries_page(
     request: Request,
+    current_user: User = Depends(
+        get_current_user,
+    ),
 ):
     """
-    Return read-only dashboard runtime information.
-
-    The DashboardService reads from the SAME resolver
-    that processes DNS queries.
+    Render the authenticated DNS Queries page.
     """
 
-    dashboard_service = getattr(
-        request.app.state,
-        "dashboard_service",
-        None,
+    return templates.TemplateResponse(
+        request=request,
+        name="dns_queries/index.html",
+        context={
+            "application": "SentinelDNS",
+            "version": "1.0.0",
+            "user": current_user,
+        },
     )
-
-    if dashboard_service is None:
-
-        return Response(
-            content="Dashboard service unavailable.",
-            status_code=503,
-            media_type="text/plain",
-        )
-
-    try:
-
-        dashboard_data = (
-            dashboard_service.get_dashboard_data()
-        )
-
-    except Exception:
-
-        return Response(
-            content="Dashboard data unavailable.",
-            status_code=503,
-            media_type="text/plain",
-        )
-
-    return dashboard_data
