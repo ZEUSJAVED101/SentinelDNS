@@ -26,11 +26,6 @@
         {% endblock %}
     </title>
 
-
-    <!-- ==================================================
-         Stylesheet
-         ================================================== -->
-
     <link
         rel="stylesheet"
         href="{{ url_for(
@@ -58,7 +53,6 @@
                 id="sidebar"
                 aria-label="Main navigation"
             >
-
 
                 <!-- Brand -->
 
@@ -96,8 +90,10 @@
 
                 <!-- Navigation -->
 
-                <nav class="sidebar-nav">
-
+                <nav
+                    class="sidebar-nav"
+                    aria-label="Primary navigation"
+                >
 
                     <!-- Overview -->
 
@@ -107,10 +103,9 @@
                             Overview
                         </span>
 
-
                         <a
                             href="/dashboard"
-                            class="nav-item active"
+                            class="nav-item {% if request.url.path == '/dashboard' %}active{% endif %}"
                         >
 
                             <span
@@ -137,10 +132,9 @@
                             DNS Engine
                         </span>
 
-
                         <a
-                            href="#"
-                            class="nav-item"
+                            href="/queries"
+                            class="nav-item {% if request.url.path == '/queries' %}active{% endif %}"
                         >
 
                             <span
@@ -157,8 +151,12 @@
                         </a>
 
 
+                        <!-- Future management routes will be
+                             connected here as their real backend
+                             implementations are added. -->
+
                         <a
-                            href="#"
+                            href="/upstream"
                             class="nav-item"
                         >
 
@@ -177,7 +175,7 @@
 
 
                         <a
-                            href="#"
+                            href="/cache"
                             class="nav-item"
                         >
 
@@ -207,7 +205,7 @@
 
 
                         <a
-                            href="#"
+                            href="/blocklists"
                             class="nav-item"
                         >
 
@@ -226,7 +224,7 @@
 
 
                         <a
-                            href="#"
+                            href="/filters"
                             class="nav-item"
                         >
 
@@ -234,7 +232,7 @@
                                 class="nav-icon"
                                 aria-hidden="true"
                             >
-                                ⛨
+                                ⚙
                             </span>
 
                             <span>
@@ -245,7 +243,7 @@
 
 
                         <a
-                            href="#"
+                            href="/security-events"
                             class="nav-item"
                         >
 
@@ -275,7 +273,7 @@
 
 
                         <a
-                            href="#"
+                            href="/dhcp"
                             class="nav-item"
                         >
 
@@ -294,7 +292,7 @@
 
 
                         <a
-                            href="#"
+                            href="/clients"
                             class="nav-item"
                         >
 
@@ -324,7 +322,7 @@
 
 
                         <a
-                            href="#"
+                            href="/settings"
                             class="nav-item"
                         >
 
@@ -343,7 +341,7 @@
 
 
                         <a
-                            href="#"
+                            href="/audit-log"
                             class="nav-item"
                         >
 
@@ -377,7 +375,7 @@
                         ></span>
 
                         <span>
-                            DNS Engine Operational
+                            SentinelDNS Online
                         </span>
 
                     </div>
@@ -393,88 +391,8 @@
 
             <main class="main-content">
 
-
-                <!-- ==================================================
-                     TOP BAR
-                     ================================================== -->
-
-                <header class="topbar">
-
-
-                    <div class="topbar-left">
-
-
-                        <!-- Mobile menu -->
-
-                        <button
-                            type="button"
-                            class="menu-button"
-                            id="menuButton"
-                            aria-label="Open navigation menu"
-                            aria-controls="sidebar"
-                            aria-expanded="false"
-                        >
-                            ☰
-                        </button>
-
-
-                        <!-- Page title -->
-
-                        <div>
-
-                            <div class="topbar-title">
-
-                                {% block page_title %}
-                                    SentinelDNS
-                                {% endblock %}
-
-                            </div>
-
-                            <div class="topbar-subtitle">
-
-                                DNS Security Management Platform
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-
-                    <!-- System status -->
-
-                    <div class="topbar-status">
-
-                        <div class="sidebar-status">
-
-                            <span
-                                class="status-dot"
-                                aria-hidden="true"
-                            ></span>
-
-                            <span>
-                                System Online
-                            </span>
-
-                        </div>
-
-                    </div>
-
-                </header>
-
-
-                <!-- ==================================================
-                     PAGE
-                     ================================================== -->
-
-                <div class="page-content">
-
-                    {% block content %}
-
-                    {% endblock %}
-
-                </div>
-
+                {% block content %}
+                {% endblock %}
 
             </main>
 
@@ -494,6 +412,10 @@
         ) }}"
         defer
     ></script>
+
+
+    {% block scripts %}
+    {% endblock %}
 
 </body>
 

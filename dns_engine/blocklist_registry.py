@@ -3,6 +3,9 @@ Blocklist Registry
 
 Responsibilities:
 - Maintain shared BlocklistLoader instances.
+- Provide access to loaded blocklists.
+- Reload individual blocklists.
+- Reload all loaded blocklists.
 """
 
 from __future__ import annotations
@@ -12,7 +15,7 @@ from dns_engine.blocklist import BlocklistLoader
 
 class BlocklistRegistry:
     """
-    Singleton registry for blocklists.
+    Shared registry for blocklist loaders.
     """
 
     _loaders: dict[str, BlocklistLoader] = {}
@@ -28,19 +31,36 @@ class BlocklistRegistry:
 
         if filename not in cls._loaders:
 
-            cls._loaders[filename] = BlocklistLoader(
-                filename,
+            cls._loaders[filename] = (
+                BlocklistLoader(
+                    filename,
+                )
             )
 
         return cls._loaders[filename]
 
     @classmethod
+    def loaded(
+        cls,
+    ) -> dict[str, BlocklistLoader]:
+        """
+        Return all currently loaded blocklist loaders.
+
+        A shallow copy is returned so callers cannot modify
+        the registry dictionary directly.
+        """
+
+        return dict(
+            cls._loaders,
+        )
+
+    @classmethod
     def reload(
         cls,
         filename: str,
-    ) -> None:
+    ) -> BlocklistLoader:
         """
-        Reload a blocklist.
+        Reload one blocklist and return its loader.
         """
 
         loader = cls.get(
@@ -49,12 +69,14 @@ class BlocklistRegistry:
 
         loader.reload()
 
+        return loader
+
     @classmethod
     def reload_all(
         cls,
     ) -> None:
         """
-        Reload every loaded blocklist.
+        Reload every currently loaded blocklist.
         """
 
         for loader in cls._loaders.values():

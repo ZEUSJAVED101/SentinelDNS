@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+
+{% block title %}
+    SentinelDNS — DNS Cache
+{% endblock %}
+
+{% block content %}
+
+<section class="page-header">
+
+    <div>
+
+        <p class="eyebrow">
+            DNS ENGINE
+        </p>
+
+        <h1>
+            DNS Cache
+        </h1>
+
+        <p class="page-description">
+            Monitor the runtime DNS cache and its performance.
+        </p>
+
+    </div>
+
+    <div class="page-actions">
+
+        <span class="status-badge">
+            ACTIVE
+        </span>
+
+    </div>
+
+</section>
+
+
+<section class="query-summary">
+
+    <article class="query-stat">
+
+        <span>
+            Cached Entries
+        </span>
+
+        <strong>
+            {{ cache.size }}
+        </strong>
+
+    </article>
+
+
+    <article class="query-stat">
+
+        <span>
+            Cache Hits
+        </span>
+
+        <strong>
+            {{ cache.hits }}
+        </strong>
+
+    </article>
+
+
+    <article class="query-stat">
+
+        <span>
+            Cache Misses
+        </span>
+
+        <strong>
+            {{ cache.misses }}
+        </strong>
+
+    </article>
+
+
+    <article class="query-stat">
+
+        <span>
+            Hit Ratio
+        </span>
+
+        <strong>
+            {{ "%.2f"|format(cache.hit_ratio * 100) }}%
+        </strong>
+
+    </article>
+
+</section>
+
+
+<section class="panel">
+
+    <div class="panel-header">
+
+        <div>
+
+            <p class="eyebrow">
+                RUNTIME CACHE
+            </p>
+
+            <h2>
+                Cache Statistics
+            </h2>
+
+        </div>
+
+    </div>
+
+
+    <div class="table-wrapper">
+
+        <table>
+
+            <tbody>
+
+                <tr>
+
+                    <th>
+                        Status
+                    </th>
+
+                    <td>
+
+                        {% if cache.enabled %}
+
+                            <span class="status-badge">
+                                ACTIVE
+                            </span>
+
+                        {% else %}
+
+                            <span class="status-badge">
+                                UNAVAILABLE
+                            </span>
+
+                        {% endif %}
+
+                    </td>
+
+                </tr>
+
+
+                <tr>
+
+                    <th>
+                        Cached Entries
+                    </th>
+
+                    <td>
+                        {{ cache.size }}
+                    </td>
+
+                </tr>
+
+
+                <tr>
+
+                    <th>
+                        Cache Hits
+                    </th>
+
+                    <td>
+                        {{ cache.hits }}
+                    </td>
+
+                </tr>
+
+
+                <tr>
+
+                    <th>
+                        Cache Misses
+                    </th>
+
+                    <td>
+                        {{ cache.misses }}
+                    </td>
+
+                </tr>
+
+
+                <tr>
+
+                    <th>
+                        Hit Ratio
+                    </th>
+
+                    <td>
+                        {{ "%.2f"|format(cache.hit_ratio * 100) }}%
+                    </td>
+
+                </tr>
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</section>
+
+
+<section class="security-note">
+
+    <div class="security-note-icon">
+        ✓
+    </div>
+
+    <div>
+
+        <strong>
+            Runtime cache protection
+        </strong>
+
+        <p>
+            Cache statistics are read directly from the
+            SentinelDNS runtime cache. No raw DNS packets
+            or client information are exposed by this page.
+        </p>
+
+    </div>
+
+</section>
+
+{% endblock %}

@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+
+{% block title %}
+    SentinelDNS — Blocklists
+{% endblock %}
+
+{% block content %}
+
+<section class="page-header">
+
+    <div>
+
+        <p class="eyebrow">
+            SECURITY
+        </p>
+
+        <h1>
+            Blocklists
+        </h1>
+
+        <p class="page-description">
+            Manage the DNS blocklists loaded by SentinelDNS.
+        </p>
+
+    </div>
+
+    <div class="page-actions">
+
+        <form
+            method="post"
+            action="/blocklists/reload-all"
+        >
+
+            <button
+                type="submit"
+                class="button"
+            >
+                Reload All
+            </button>
+
+        </form>
+
+    </div>
+
+</section>
+
+
+<section class="query-summary">
+
+    <article class="query-stat">
+
+        <span>
+            Blocklists
+        </span>
+
+        <strong>
+            {{ total_blocklists }}
+        </strong>
+
+    </article>
+
+
+    <article class="query-stat">
+
+        <span>
+            Blocked Domains
+        </span>
+
+        <strong>
+            {{ total_domains }}
+        </strong>
+
+    </article>
+
+</section>
+
+
+<section class="panel">
+
+    <div class="panel-header">
+
+        <div>
+
+            <p class="eyebrow">
+                ACTIVE LISTS
+            </p>
+
+            <h2>
+                Configured Blocklists
+            </h2>
+
+        </div>
+
+    </div>
+
+
+    <div class="table-wrapper">
+
+        <table>
+
+            <thead>
+
+                <tr>
+
+                    <th>
+                        Blocklist
+                    </th>
+
+                    <th>
+                        Domains
+                    </th>
+
+                    <th>
+                        Status
+                    </th>
+
+                    <th>
+                        Action
+                    </th>
+
+                </tr>
+
+            </thead>
+
+
+            <tbody>
+
+                {% for blocklist in blocklists %}
+
+                    <tr>
+
+                        <td>
+                            <strong>
+                                {{ blocklist.filename }}
+                            </strong>
+                        </td>
+
+
+                        <td>
+                            {{ blocklist.size }}
+                        </td>
+
+
+                        <td>
+
+                            {% if blocklist.exists %}
+
+                                <span class="status-badge">
+                                    LOADED
+                                </span>
+
+                            {% else %}
+
+                                <span class="status-badge">
+                                    MISSING
+                                </span>
+
+                            {% endif %}
+
+                        </td>
+
+
+                        <td>
+
+                            <form
+                                method="post"
+                                action="/blocklists/{{ blocklist.filename }}/reload"
+                            >
+
+                                <button
+                                    type="submit"
+                                    class="button"
+                                >
+                                    Reload
+                                </button>
+
+                            </form>
+
+                        </td>
+
+                    </tr>
+
+                {% else %}
+
+                    <tr>
+
+                        <td colspan="4">
+                            No blocklists found.
+                        </td>
+
+                    </tr>
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</section>
+
+
+<section class="security-note">
+
+    <div class="security-note-icon">
+        ✓
+    </div>
+
+    <div>
+
+        <strong>
+            Blocklist protection
+        </strong>
+
+        <p>
+            Blocklists are loaded from the configured
+            data/blocklists directory. Domains are normalized
+            before membership checks are performed.
+        </p>
+
+    </div>
+
+</section>
+
+{% endblock %}

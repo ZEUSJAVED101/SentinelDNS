@@ -2,7 +2,6 @@
 SentinelDNS Dashboard Service
 
 Responsibilities:
-
 - Collect safe runtime DNS information
 - Expose DNS runtime metrics
 - Expose cache statistics
@@ -11,7 +10,6 @@ Responsibilities:
 - Expose blocklist statistics
 
 Security principles:
-
 - Read-only service
 - No raw DNS packets
 - No queried-domain history
@@ -37,6 +35,7 @@ class DashboardService:
         self,
         resolver=None,
     ) -> None:
+
         self.resolver = resolver
 
     # ==========================================================
@@ -156,13 +155,11 @@ class DashboardService:
                 "recent_blocked": [],
             }
 
-        # Defensive copy.
-
-        result = dict(data)
+        result = dict(
+            data,
+        )
 
         result["available"] = True
-
-        # Ensure history values are JSON-safe lists.
 
         result["recent_queries"] = list(
             result.get(
@@ -303,11 +300,6 @@ class DashboardService:
                 "hit_ratio": 0.0,
             }
 
-        # ------------------------------------------------------
-        # DNSCache defines these as @property values.
-        # Do NOT call them as functions.
-        # ------------------------------------------------------
-
         try:
 
             size = int(
@@ -354,6 +346,9 @@ class DashboardService:
     ) -> list[dict[str, Any]]:
         """
         Return read-only information about active filters.
+
+        The enabled value comes directly from the live
+        FilterManager rather than being hard-coded.
         """
 
         if self.resolver is None:
@@ -410,10 +405,23 @@ class DashboardService:
 
                     blocklist_size = None
 
+            try:
+
+                enabled = manager.is_enabled(
+                    filter_name,
+                )
+
+            except (
+                AttributeError,
+                ValueError,
+            ):
+
+                enabled = False
+
             result.append(
                 {
                     "name": filter_name,
-                    "enabled": True,
+                    "enabled": enabled,
                     "blocklist_size": (
                         blocklist_size
                     ),
@@ -472,14 +480,9 @@ class DashboardService:
 
         return {
             "dns": self.dns_status(),
-
             "metrics": self.metrics(),
-
             "transport": self.transport(),
-
             "cache": self.cache(),
-
             "filters": self.filters(),
-
             "blocklists": self.blocklists(),
         }

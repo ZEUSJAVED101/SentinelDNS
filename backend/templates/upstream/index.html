@@ -1,0 +1,352 @@
+{% extends "base.html" %}
+
+{% block title %}
+    SentinelDNS — Upstream DNS
+{% endblock %}
+
+{% block content %}
+
+<section class="page-header">
+
+    <div>
+
+        <p class="eyebrow">
+            DNS ENGINE
+        </p>
+
+        <h1>
+            Upstream DNS
+        </h1>
+
+        <p class="page-description">
+            View the active upstream DNS transport and its
+            configured non-secret connection parameters.
+        </p>
+
+    </div>
+
+    <div class="page-actions">
+
+        <span class="status-badge">
+            CONFIGURED
+        </span>
+
+    </div>
+
+</section>
+
+
+<section class="query-summary">
+
+    <article class="query-stat">
+
+        <span>
+            Transport
+        </span>
+
+        <strong>
+            {{ transport.display_name }}
+        </strong>
+
+    </article>
+
+
+    <article class="query-stat">
+
+        <span>
+            Security
+        </span>
+
+        <strong>
+            {% if transport.secure %}
+                Encrypted
+            {% else %}
+                Unencrypted
+            {% endif %}
+        </strong>
+
+    </article>
+
+
+    <article class="query-stat">
+
+        <span>
+            Configuration
+        </span>
+
+        <strong>
+            {% if transport.configured %}
+                Active
+            {% else %}
+                Unavailable
+            {% endif %}
+        </strong>
+
+    </article>
+
+</section>
+
+
+<section class="panel">
+
+    <div class="panel-header">
+
+        <div>
+
+            <p class="eyebrow">
+                ACTIVE TRANSPORT
+            </p>
+
+            <h2>
+                Upstream Configuration
+            </h2>
+
+        </div>
+
+    </div>
+
+
+    <div class="table-wrapper">
+
+        <table>
+
+            <tbody>
+
+                <tr>
+
+                    <th>
+                        Transport
+                    </th>
+
+                    <td>
+                        {{ transport.transport | upper }}
+                    </td>
+
+                </tr>
+
+
+                <tr>
+
+                    <th>
+                        Display Name
+                    </th>
+
+                    <td>
+                        {{ transport.display_name }}
+                    </td>
+
+                </tr>
+
+
+                <tr>
+
+                    <th>
+                        Secure
+                    </th>
+
+                    <td>
+
+                        {% if transport.secure %}
+
+                            <span class="status-badge">
+                                ENCRYPTED
+                            </span>
+
+                        {% else %}
+
+                            <span class="status-badge">
+                                UNENCRYPTED
+                            </span>
+
+                        {% endif %}
+
+                    </td>
+
+                </tr>
+
+
+                {% if transport.transport == "udp" %}
+
+                    <tr>
+
+                        <th>
+                            Upstream Servers
+                        </th>
+
+                        <td>
+
+                            {% if transport.servers %}
+
+                                <ul>
+
+                                    {% for server in transport.servers %}
+
+                                        <li>
+                                            {{ server }}
+                                        </li>
+
+                                    {% endfor %}
+
+                                </ul>
+
+                            {% else %}
+
+                                None configured
+
+                            {% endif %}
+
+                        </td>
+
+                    </tr>
+
+                {% endif %}
+
+
+                {% if transport.transport == "dot" %}
+
+                    <tr>
+
+                        <th>
+                            Server
+                        </th>
+
+                        <td>
+                            {{ transport.server }}
+                        </td>
+
+                    </tr>
+
+
+                    <tr>
+
+                        <th>
+                            Port
+                        </th>
+
+                        <td>
+                            {{ transport.port }}
+                        </td>
+
+                    </tr>
+
+
+                    <tr>
+
+                        <th>
+                            TLS Verification
+                        </th>
+
+                        <td>
+
+                            {% if transport.tls_verification %}
+                                Enabled
+                            {% else %}
+                                Disabled
+                            {% endif %}
+
+                        </td>
+
+                    </tr>
+
+                {% endif %}
+
+
+                {% if transport.transport == "doh" %}
+
+                    <tr>
+
+                        <th>
+                            Provider
+                        </th>
+
+                        <td>
+                            {{ transport.provider }}
+                        </td>
+
+                    </tr>
+
+
+                    <tr>
+
+                        <th>
+                            Endpoint
+                        </th>
+
+                        <td>
+                            {{ transport.endpoint }}
+                        </td>
+
+                    </tr>
+
+
+                    <tr>
+
+                        <th>
+                            HTTP/2
+                        </th>
+
+                        <td>
+
+                            {% if transport.http2 %}
+                                Enabled
+                            {% else %}
+                                Disabled
+                            {% endif %}
+
+                        </td>
+
+                    </tr>
+
+
+                    <tr>
+
+                        <th>
+                            TLS Verification
+                        </th>
+
+                        <td>
+
+                            {% if transport.tls_verification %}
+                                Enabled
+                            {% else %}
+                                Disabled
+                            {% endif %}
+
+                        </td>
+
+                    </tr>
+
+                {% endif %}
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</section>
+
+
+<section class="security-note">
+
+    <div class="security-note-icon">
+        ✓
+    </div>
+
+    <div>
+
+        <strong>
+            Safe configuration view
+        </strong>
+
+        <p>
+            This page exposes only non-secret upstream
+            configuration. Authentication data, credentials
+            and raw DNS packets are never returned.
+        </p>
+
+    </div>
+
+</section>
+
+{% endblock %}

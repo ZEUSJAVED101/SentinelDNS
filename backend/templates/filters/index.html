@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+
+{% block title %}
+    SentinelDNS — Filters
+{% endblock %}
+
+{% block content %}
+
+<section class="page-header">
+
+    <div>
+
+        <p class="eyebrow">
+            SECURITY
+        </p>
+
+        <h1>
+            DNS Filters
+        </h1>
+
+        <p class="page-description">
+            Control the filtering rules applied to DNS queries.
+        </p>
+
+    </div>
+
+</section>
+
+
+<section class="panel">
+
+    <div class="panel-header">
+
+        <div>
+
+            <p class="eyebrow">
+                FILTER ENGINE
+            </p>
+
+            <h2>
+                Active Filters
+            </h2>
+
+        </div>
+
+    </div>
+
+
+    <div class="table-wrapper">
+
+        <table>
+
+            <thead>
+
+                <tr>
+
+                    <th>
+                        Filter
+                    </th>
+
+                    <th>
+                        Status
+                    </th>
+
+                    <th>
+                        Blocklist
+                    </th>
+
+                    <th>
+                        Action
+                    </th>
+
+                </tr>
+
+            </thead>
+
+
+            <tbody>
+
+                {% for filter in filters %}
+
+                    <tr>
+
+                        <td>
+
+                            <strong>
+                                {{ filter.name }}
+                            </strong>
+
+                        </td>
+
+
+                        <td>
+
+                            {% if filter.enabled %}
+
+                                <span class="status-badge">
+                                    ENABLED
+                                </span>
+
+                            {% else %}
+
+                                <span class="status-badge">
+                                    DISABLED
+                                </span>
+
+                            {% endif %}
+
+                        </td>
+
+
+                        <td>
+
+                            {% if filter.blocklist_size is not none %}
+
+                                {{ filter.blocklist_size }}
+                                domains
+
+                            {% else %}
+
+                                Rule based
+
+                            {% endif %}
+
+                        </td>
+
+
+                        <td>
+
+                            <form
+                                method="post"
+                                action="/filters/{{ filter.name }}/toggle"
+                            >
+
+                                <button
+                                    type="submit"
+                                    class="button"
+                                >
+
+                                    {% if filter.enabled %}
+                                        Disable
+                                    {% else %}
+                                        Enable
+                                    {% endif %}
+
+                                </button>
+
+                            </form>
+
+                        </td>
+
+                    </tr>
+
+                {% else %}
+
+                    <tr>
+
+                        <td colspan="4">
+                            No filters are available.
+                        </td>
+
+                    </tr>
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</section>
+
+
+<section class="security-note">
+
+    <div class="security-note-icon">
+        ✓
+    </div>
+
+    <div>
+
+        <strong>
+            Live DNS filtering
+        </strong>
+
+        <p>
+            Filter changes are applied directly to the
+            running DNS resolver. Disabling a filter changes
+            how subsequent DNS queries are evaluated.
+        </p>
+
+    </div>
+
+</section>
+
+{% endblock %}
