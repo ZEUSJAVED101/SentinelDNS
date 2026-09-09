@@ -1,0 +1,311 @@
+/*
+ * SentinelDNS Login — Authentication STEP 1
+ *
+ * Security principles:
+ * - Never stores the JWT in JavaScript storage.
+ * - Never reads the authentication cookie.
+ * - Credentials are sent only to the same-origin API.
+ * - No password/token logging.
+ */
+
+"use strict";
+
+
+const form = document.getElementById(
+    "login-form",
+);
+
+const usernameInput = document.getElementById(
+    "username",
+);
+
+const passwordInput = document.getElementById(
+    "password",
+);
+
+const loginButton = document.getElementById(
+    "login-button",
+);
+
+const loginButtonText = document.querySelector(
+    ".login-button-text",
+);
+
+const passwordToggle = document.getElementById(
+    "password-toggle",
+);
+
+const forgotPasswordButton = document.getElementById(
+    "forgot-password",
+);
+
+const errorElement = document.getElementById(
+    "login-error",
+);
+
+const infoElement = document.getElementById(
+    "login-info",
+);
+
+
+function showError(message) {
+
+    if (!errorElement) {
+        return;
+    }
+
+    errorElement.textContent = message;
+
+    errorElement.classList.add(
+        "visible",
+    );
+}
+
+
+function clearError() {
+
+    if (!errorElement) {
+        return;
+    }
+
+    errorElement.textContent = "";
+
+    errorElement.classList.remove(
+        "visible",
+    );
+}
+
+
+function showInfo(message) {
+
+    if (!infoElement) {
+        return;
+    }
+
+    infoElement.textContent = message;
+
+    infoElement.classList.add(
+        "visible",
+    );
+}
+
+
+function clearInfo() {
+
+    if (!infoElement) {
+        return;
+    }
+
+    infoElement.textContent = "";
+
+    infoElement.classList.remove(
+        "visible",
+    );
+}
+
+
+function setLoading(loading) {
+
+    if (!loginButton) {
+        return;
+    }
+
+    loginButton.disabled = loading;
+
+    loginButton.classList.toggle(
+        "loading",
+        loading,
+    );
+
+    if (loginButtonText) {
+        loginButtonText.textContent = loading
+            ? "Authenticating..."
+            : "Sign in securely";
+    }
+
+    if (usernameInput) {
+        usernameInput.disabled = loading;
+    }
+
+    if (passwordInput) {
+        passwordInput.disabled = loading;
+    }
+
+    if (passwordToggle) {
+        passwordToggle.disabled = loading;
+    }
+}
+
+
+function togglePassword() {
+
+    if (!passwordInput || !passwordToggle) {
+        return;
+    }
+
+    const showing = passwordInput.type === "text";
+
+    passwordInput.type = showing
+        ? "password"
+        : "text";
+
+    passwordToggle.textContent = showing
+        ? "Show"
+        : "Hide";
+
+    passwordToggle.setAttribute(
+        "aria-label",
+        showing
+            ? "Show password"
+            : "Hide password",
+    );
+
+    passwordToggle.setAttribute(
+        "aria-pressed",
+        String(!showing),
+    );
+}
+
+
+function showForgotPasswordMessage() {
+
+    clearError();
+
+    showInfo(
+        "Password recovery will be enabled in the next authentication step. Your existing login remains unchanged.",
+    );
+}
+
+
+async function login(event) {
+
+    event.preventDefault();
+
+    clearError();
+    clearInfo();
+
+    const username = usernameInput
+        ? usernameInput.value.trim()
+        : "";
+
+    const password = passwordInput
+        ? passwordInput.value
+        : "";
+
+    if (!username || !password) {
+
+        showError(
+            "Username and password are required.",
+        );
+
+        return;
+    }
+
+    setLoading(true);
+
+    try {
+
+        const body = new URLSearchParams();
+
+        body.set(
+            "username",
+            username,
+        );
+
+        body.set(
+            "password",
+            password,
+        );
+
+        const response = await fetch(
+            "/auth/login",
+            {
+                method: "POST",
+
+                credentials: "same-origin",
+
+                headers: {
+                    "Content-Type":
+                        "application/x-www-form-urlencoded",
+                    "Accept":
+                        "application/json",
+                },
+
+                body: body.toString(),
+
+                cache: "no-store",
+            },
+        );
+
+        if (!response.ok) {
+
+            if (
+                response.status === 401
+                || response.status === 400
+            ) {
+
+                throw new Error(
+                    "INVALID_CREDENTIALS",
+                );
+            }
+
+            throw new Error(
+                "LOGIN_FAILED",
+            );
+        }
+
+        window.location.assign(
+            "/dashboard",
+        );
+
+    } catch (error) {
+
+        if (
+            error instanceof Error
+            && error.message
+                === "INVALID_CREDENTIALS"
+        ) {
+
+            showError(
+                "Invalid username or password.",
+            );
+
+        } else {
+
+            showError(
+                "Unable to sign in. Please try again.",
+            );
+        }
+
+    } finally {
+
+        setLoading(false);
+    }
+}
+
+
+if (passwordToggle) {
+
+    passwordToggle.addEventListener(
+        "click",
+        togglePassword,
+    );
+}
+
+
+if (forgotPasswordButton) {
+
+    forgotPasswordButton.addEventListener(
+        "click",
+        showForgotPasswordMessage,
+    );
+}
+
+
+if (form) {
+
+    form.addEventListener(
+        "submit",
+        login,
+    );
+}

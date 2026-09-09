@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block title %}
+    Security Events — SentinelDNS
+{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+
+    <div>
+        <div class="eyebrow">
+            SECURITY
+        </div>
+
+        <h1>
+            Security Events
+        </h1>
+
+        <p>
+            Real-time DNS security activity detected by SentinelDNS.
+        </p>
+    </div>
+
+</div>
+
+
+<div class="card">
+
+    <div class="card-header">
+
+        <div>
+            <h2>
+                Recent Events
+            </h2>
+
+            <p>
+                Automatically refreshed security events.
+            </p>
+        </div>
+
+        <div
+            id="event-status"
+            class="status-badge"
+        >
+            LIVE
+        </div>
+
+    </div>
+
+
+    <div class="table-wrapper">
+
+        <table class="data-table">
+
+            <thead>
+
+                <tr>
+                    <th>Time</th>
+                    <th>Event</th>
+                    <th>Filter</th>
+                    <th>Action</th>
+                    <th>Reason</th>
+                </tr>
+
+            </thead>
+
+            <tbody id="security-events-body">
+
+                {% if events %}
+
+                    {% for event in events %}
+
+                    <tr>
+
+                        <td>
+                            {{ event.timestamp or "—" }}
+                        </td>
+
+                        <td>
+                            {{ event.event_type or "—" }}
+                        </td>
+
+                        <td>
+                            {{ event.filter_name or "—" }}
+                        </td>
+
+                        <td>
+                            <span class="event-action">
+                                {{ event.action or "—" }}
+                            </span>
+                        </td>
+
+                        <td>
+                            {{ event.reason or "—" }}
+                        </td>
+
+                    </tr>
+
+                    {% endfor %}
+
+                {% else %}
+
+                    <tr id="empty-events">
+
+                        <td
+                            colspan="5"
+                            class="empty-state"
+                        >
+                            No security events recorded yet.
+                        </td>
+
+                    </tr>
+
+                {% endif %}
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>
+
+
+<script
+    src="{{ url_for(
+        'static',
+        path='js/security-events.js'
+    ) }}"
+    defer
+></script>
+
+{% endblock %}

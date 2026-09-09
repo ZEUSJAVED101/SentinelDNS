@@ -2,421 +2,244 @@
 <html lang="en">
 
 <head>
-
     <meta charset="UTF-8">
-
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
-
-    <meta
-        name="description"
-        content="SentinelDNS DNS Security Management Dashboard"
-    >
-
-    <meta
-        name="robots"
-        content="noindex, nofollow"
-    >
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="SentinelDNS DNS Security Management Dashboard">
+    <meta name="robots" content="noindex, nofollow">
 
     <title>
         {% block title %}
-            SentinelDNS
+        SentinelDNS
         {% endblock %}
     </title>
 
-    <link
-        rel="stylesheet"
-        href="{{ url_for(
-            'static',
-            path='css/app.css'
-        ) }}"
-    >
-
+    <link rel="stylesheet" href="{{ url_for('static', path='css/app.css') }}">
 </head>
 
-
 <body>
+    <!-- Small inline SVG sprite: no external icon dependency and no JavaScript required. -->
+    <svg class="icon-sprite" aria-hidden="true" focusable="false">
+        <symbol id="icon-dashboard" viewBox="0 0 24 24">
+            <rect x="4" y="4" width="6" height="6" rx="1.2"></rect>
+            <rect x="14" y="4" width="6" height="6" rx="1.2"></rect>
+            <rect x="4" y="14" width="6" height="6" rx="1.2"></rect>
+            <rect x="14" y="14" width="6" height="6" rx="1.2"></rect>
+        </symbol>
+        <symbol id="icon-dns" viewBox="0 0 24 24">
+            <path d="M6 5h12M6 12h12M6 19h12"></path>
+            <circle cx="9" cy="5" r="1.5"></circle>
+            <circle cx="15" cy="12" r="1.5"></circle>
+            <circle cx="11" cy="19" r="1.5"></circle>
+        </symbol>
+        <symbol id="icon-upstream" viewBox="0 0 24 24">
+            <path d="M5 8h12"></path>
+            <path d="m14 5 3 3-3 3"></path>
+            <path d="M19 16H7"></path>
+            <path d="m10 13-3 3 3 3"></path>
+        </symbol>
+        <symbol id="icon-cache" viewBox="0 0 24 24">
+            <path d="M7 7h10v4H7z"></path>
+            <path d="M5 13h14v4H5z"></path>
+            <path d="M8 4h8"></path>
+        </symbol>
+        <symbol id="icon-shield" viewBox="0 0 24 24">
+            <path d="M12 3 19 6v5c0 4.5-2.7 8-7 10-4.3-2-7-5.5-7-10V6l7-3Z"></path>
+            <path d="m9 12 2 2 4-4"></path>
+        </symbol>
+        <symbol id="icon-filter" viewBox="0 0 24 24">
+            <path d="M4 6h16M7 12h10M10 18h4"></path>
+        </symbol>
+        <symbol id="icon-network" viewBox="0 0 24 24">
+            <rect x="9" y="4" width="6" height="5" rx="1"></rect>
+            <rect x="4" y="15" width="6" height="5" rx="1"></rect>
+            <rect x="14" y="15" width="6" height="5" rx="1"></rect>
+            <path d="M12 9v3M7 15v-3h10v3"></path>
+        </symbol>
+        <symbol id="icon-users" viewBox="0 0 24 24">
+            <circle cx="9" cy="9" r="3"></circle>
+            <path d="M3.5 20c.5-3.3 2.3-5 5.5-5s5 1.7 5.5 5"></path>
+            <circle cx="17" cy="10" r="2.5"></circle>
+            <path d="M15 15.5c2.9-.2 4.7 1.3 5.2 4.5"></path>
+        </symbol>
+        <symbol id="icon-settings" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19 12a7 7 0 0 0-.2-1.7l2-1.5-2-3.4-2.3 1a7 7 0 0 0-2.9-1.7L13.3 2h-3.9l-.4 2.7a7 7 0 0 0-2.9 1.7l-2.3-1-2 3.4 2 1.5A7 7 0 0 0 3.6 12c0 .6.1 1.2.2 1.7l-2 1.5 2 3.4 2.3-1a7 7 0 0 0 2.9 1.7l.4 2.7h3.9l.4-2.7a7 7 0 0 0 2.9-1.7l2.3 1 2-3.4-2-1.5A7 7 0 0 0 19 12Z"></path>
+        </symbol>
+        <symbol id="icon-log" viewBox="0 0 24 24">
+            <path d="M7 4h10v16H7z"></path>
+            <path d="M10 8h4M10 12h4M10 16h4"></path>
+        </symbol>
+        <symbol id="icon-menu" viewBox="0 0 24 24">
+            <path d="M4 7h16M4 12h16M4 17h16"></path>
+        </symbol>
+        <symbol id="icon-pulse" viewBox="0 0 24 24">
+            <path d="M3 12h4l2-6 4 12 2-6h6"></path>
+        </symbol>
+    </svg>
 
     <div class="app-shell">
-
         <div class="app-layout">
 
-
-            <!-- ==================================================
-                 SIDEBAR
-                 ================================================== -->
-
-            <aside
-                class="sidebar"
-                id="sidebar"
-                aria-label="Main navigation"
-            >
-
-                <!-- Brand -->
+            <aside class="sidebar" id="sidebar" aria-label="Main navigation">
 
                 <div class="sidebar-brand">
-
-                    <a
-                        href="/dashboard"
-                        class="brand-link"
-                        aria-label="SentinelDNS Dashboard"
-                    >
-
-                        <span
-                            class="brand-mark"
-                            aria-hidden="true"
-                        >
-                            S
-                        </span>
-
+                    <a href="/dashboard" class="brand-link" aria-label="SentinelDNS Dashboard">
+                        <span class="brand-mark" aria-hidden="true"><img src="{{ url_for('static', path='images/sentineldns-mark.png') }}" alt="" loading="eager"></span>
                         <span class="brand-text">
-
-                            <span class="brand-name">
-                                SentinelDNS
-                            </span>
-
-                            <span class="brand-version">
-                                v1.0
-                            </span>
-
+                            <span class="brand-name">SentinelDNS</span>
+                            <span class="brand-version">v1.0 · DNS Security</span>
                         </span>
-
                     </a>
-
                 </div>
 
-
-                <!-- Navigation -->
-
-                <nav
-                    class="sidebar-nav"
-                    aria-label="Primary navigation"
-                >
-
-                    <!-- Overview -->
+                <nav class="sidebar-nav" aria-label="Primary navigation">
 
                     <div class="nav-section">
+                        <span class="nav-section-title">Overview</span>
 
-                        <span class="nav-section-title">
-                            Overview
-                        </span>
-
-                        <a
-                            href="/dashboard"
-                            class="nav-item {% if request.url.path == '/dashboard' %}active{% endif %}"
-                        >
-
-                            <span
-                                class="nav-icon"
-                                aria-hidden="true"
-                            >
-                                ◉
+                        <a href="/dashboard"
+                           class="nav-item {% if request.url.path == '/dashboard' %}active{% endif %}"
+                           {% if request.url.path == '/dashboard' %}aria-current="page"{% endif %}>
+                            <span class="nav-icon" aria-hidden="true">
+                                <svg><use href="#icon-dashboard"></use></svg>
                             </span>
-
-                            <span>
-                                Dashboard
-                            </span>
-
+                            <span>Dashboard</span>
                         </a>
-
                     </div>
-
-
-                    <!-- DNS -->
 
                     <div class="nav-section">
+                        <span class="nav-section-title">DNS Engine</span>
 
-                        <span class="nav-section-title">
-                            DNS Engine
-                        </span>
-
-                        <a
-                            href="/queries"
-                            class="nav-item {% if request.url.path == '/queries' %}active{% endif %}"
-                        >
-
-                            <span
-                                class="nav-icon"
-                                aria-hidden="true"
-                            >
-                                ◌
-                            </span>
-
-                            <span>
-                                DNS Queries
-                            </span>
-
+                        <a href="/queries" class="nav-item {% if request.url.path == '/queries' %}active{% endif %}"
+                           {% if request.url.path == '/queries' %}aria-current="page"{% endif %}>
+                            <span class="nav-icon" aria-hidden="true"><svg><use href="#icon-dns"></use></svg></span>
+                            <span>DNS Queries</span>
                         </a>
 
-
-                        <!-- Future management routes will be
-                             connected here as their real backend
-                             implementations are added. -->
-
-                        <a
-                            href="/upstream"
-                            class="nav-item"
-                        >
-
-                            <span
-                                class="nav-icon"
-                                aria-hidden="true"
-                            >
-                                ↗
-                            </span>
-
-                            <span>
-                                Upstream DNS
-                            </span>
-
+                        <a href="/upstream" class="nav-item {% if request.url.path == '/upstream' %}active{% endif %}"
+                           {% if request.url.path == '/upstream' %}aria-current="page"{% endif %}>
+                            <span class="nav-icon" aria-hidden="true"><svg><use href="#icon-upstream"></use></svg></span>
+                            <span>Upstream DNS</span>
                         </a>
 
-
-                        <a
-                            href="/cache"
-                            class="nav-item"
-                        >
-
-                            <span
-                                class="nav-icon"
-                                aria-hidden="true"
-                            >
-                                ◇
-                            </span>
-
-                            <span>
-                                Cache
-                            </span>
-
+                        <a href="/cache" class="nav-item {% if request.url.path == '/cache' %}active{% endif %}"
+                           {% if request.url.path == '/cache' %}aria-current="page"{% endif %}>
+                            <span class="nav-icon" aria-hidden="true"><svg><use href="#icon-cache"></use></svg></span>
+                            <span>Cache</span>
                         </a>
-
                     </div>
-
-
-                    <!-- Security -->
 
                     <div class="nav-section">
+                        <span class="nav-section-title">Security</span>
 
-                        <span class="nav-section-title">
-                            Security
-                        </span>
-
-
-                        <a
-                            href="/blocklists"
-                            class="nav-item"
-                        >
-
-                            <span
-                                class="nav-icon"
-                                aria-hidden="true"
-                            >
-                                ◆
-                            </span>
-
-                            <span>
-                                Blocklists
-                            </span>
-
+                        <a href="/blocklists" class="nav-item {% if request.url.path == '/blocklists' %}active{% endif %}"
+                           {% if request.url.path == '/blocklists' %}aria-current="page"{% endif %}>
+                            <span class="nav-icon" aria-hidden="true"><svg><use href="#icon-shield"></use></svg></span>
+                            <span>Blocklists</span>
                         </a>
 
-
-                        <a
-                            href="/filters"
-                            class="nav-item"
-                        >
-
-                            <span
-                                class="nav-icon"
-                                aria-hidden="true"
-                            >
-                                ⚙
-                            </span>
-
-                            <span>
-                                Filters
-                            </span>
-
+                        <a href="/filters" class="nav-item {% if request.url.path == '/filters' %}active{% endif %}"
+                           {% if request.url.path == '/filters' %}aria-current="page"{% endif %}>
+                            <span class="nav-icon" aria-hidden="true"><svg><use href="#icon-filter"></use></svg></span>
+                            <span>Filters</span>
                         </a>
 
-
-                        <a
-                            href="/security-events"
-                            class="nav-item"
-                        >
-
-                            <span
-                                class="nav-icon"
-                                aria-hidden="true"
-                            >
-                                !
-                            </span>
-
-                            <span>
-                                Security Events
-                            </span>
-
+                        <a href="/security-events" class="nav-item {% if request.url.path == '/security-events' %}active{% endif %}"
+                           {% if request.url.path == '/security-events' %}aria-current="page"{% endif %}>
+                            <span class="nav-icon" aria-hidden="true"><svg><use href="#icon-pulse"></use></svg></span>
+                            <span>Security Events</span>
                         </a>
-
                     </div>
-
-
-                    <!-- Network -->
 
                     <div class="nav-section">
+                        <span class="nav-section-title">Network</span>
 
-                        <span class="nav-section-title">
-                            Network
-                        </span>
-
-
-                        <a
-                            href="/dhcp"
-                            class="nav-item"
-                        >
-
-                            <span
-                                class="nav-icon"
-                                aria-hidden="true"
-                            >
-                                ⇄
-                            </span>
-
-                            <span>
-                                DHCP
-                            </span>
-
+                        <a href="/dhcp" class="nav-item {% if request.url.path == '/dhcp' %}active{% endif %}"
+                           {% if request.url.path == '/dhcp' %}aria-current="page"{% endif %}>
+                            <span class="nav-icon" aria-hidden="true"><svg><use href="#icon-network"></use></svg></span>
+                            <span>DHCP</span>
                         </a>
 
-
-                        <a
-                            href="/clients"
-                            class="nav-item"
-                        >
-
-                            <span
-                                class="nav-icon"
-                                aria-hidden="true"
-                            >
-                                ▣
-                            </span>
-
-                            <span>
-                                Clients
-                            </span>
-
+                        <a href="/clients" class="nav-item {% if request.url.path == '/clients' %}active{% endif %}"
+                           {% if request.url.path == '/clients' %}aria-current="page"{% endif %}>
+                            <span class="nav-icon" aria-hidden="true"><svg><use href="#icon-users"></use></svg></span>
+                            <span>Clients</span>
                         </a>
-
                     </div>
-
-
-                    <!-- System -->
 
                     <div class="nav-section">
+                        <span class="nav-section-title">System</span>
 
-                        <span class="nav-section-title">
-                            System
-                        </span>
-
-
-                        <a
-                            href="/settings"
-                            class="nav-item"
-                        >
-
-                            <span
-                                class="nav-icon"
-                                aria-hidden="true"
-                            >
-                                ⚙
-                            </span>
-
-                            <span>
-                                Settings
-                            </span>
-
+                        <a href="/settings" class="nav-item {% if request.url.path == '/settings' %}active{% endif %}"
+                           {% if request.url.path == '/settings' %}aria-current="page"{% endif %}>
+                            <span class="nav-icon" aria-hidden="true"><svg><use href="#icon-settings"></use></svg></span>
+                            <span>Settings</span>
                         </a>
 
-
-                        <a
-                            href="/audit-log"
-                            class="nav-item"
-                        >
-
-                            <span
-                                class="nav-icon"
-                                aria-hidden="true"
-                            >
-                                ▤
-                            </span>
-
-                            <span>
-                                Audit Log
-                            </span>
-
+                        <a href="/audit-log" class="nav-item {% if request.url.path == '/audit-log' %}active{% endif %}"
+                           {% if request.url.path == '/audit-log' %}aria-current="page"{% endif %}>
+                            <span class="nav-icon" aria-hidden="true"><svg><use href="#icon-log"></use></svg></span>
+                            <span>Audit Log</span>
                         </a>
-
                     </div>
-
                 </nav>
 
-
-                <!-- Sidebar status -->
-
                 <div class="sidebar-footer">
-
-                    <div class="sidebar-status">
-
-                        <span
-                            class="status-dot"
-                            aria-hidden="true"
-                        ></span>
-
-                        <span>
-                            SentinelDNS Online
-                        </span>
-
+                    <div class="sidebar-status" role="status">
+                        <span class="status-dot" aria-hidden="true"></span>
+                        <span>SentinelDNS Online</span>
                     </div>
-
+                    <span class="sidebar-footer-note">Local resolver protected</span>
                 </div>
-
             </aside>
 
+            <div class="main-area">
 
-            <!-- ==================================================
-                 MAIN CONTENT
-                 ================================================== -->
+                <header class="topbar">
+                    <div class="topbar-left">
+                        <button type="button"
+                                class="menu-button"
+                                id="menuButton"
+                                aria-label="Open navigation menu"
+                                aria-controls="sidebar"
+                                aria-expanded="false">
+                            <svg aria-hidden="true"><use href="#icon-menu"></use></svg>
+                        </button>
 
-            <main class="main-content">
+                        <div class="topbar-brand">
+                            <a href="/dashboard" class="topbar-brand-link" aria-label="SentinelDNS Dashboard">
+                                <span class="topbar-brand-mark" aria-hidden="true"><img src="{{ url_for('static', path='images/sentineldns-logo.png') }}" alt="" loading="eager"></span>
+                            </a>
+                        </div>
 
-                {% block content %}
-                {% endblock %}
+                        <div class="topbar-page">
+                            <span class="topbar-page-title">{% block page_title %}SentinelDNS{% endblock %}</span>
+                            <span class="topbar-page-subtitle">DNS security management</span>
+                        </div>
+                    </div>
 
-            </main>
+                    <div class="topbar-spacer"></div>
 
+                    <div class="dashboard-status" id="dashboard-status" data-connected="false" role="status" aria-live="polite">
+                        <span class="status-dot" aria-hidden="true"></span>
+                        <span class="dashboard-status-text">Connecting...</span>
+                    </div>
+                </header>
+
+                <main class="main-content">
+                    <div class="page-content">
+                        {% block content %}
+                        {% endblock %}
+                    </div>
+                </main>
+
+            </div>
         </div>
-
     </div>
 
-
-    <!-- ==================================================
-         Application JavaScript
-         ================================================== -->
-
-    <script
-        src="{{ url_for(
-            'static',
-            path='js/app.js'
-        ) }}"
-        defer
-    ></script>
-
+    <script src="{{ url_for('static', path='js/app.js') }}" defer></script>
 
     {% block scripts %}
     {% endblock %}
-
 </body>
-
 </html>

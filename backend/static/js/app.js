@@ -17,8 +17,6 @@
 
 const DASHBOARD_API = "/api/dashboard/";
 const REFRESH_INTERVAL_MS = 5000;
-const MAX_HISTORY_POINTS = 60;
-
 const state = {
     timer: null,
     refreshing: false,
@@ -317,17 +315,6 @@ function updateCache(
         ),
     );
 
-    /*
-     * Current API:
-     *
-     * data.cache.hit_ratio
-     *
-     * Fallback:
-     *
-     * cache_hits /
-     * (cache_hits + cache_misses)
-     */
-
     let ratio = Number(
         cache.hit_ratio,
     );
@@ -374,7 +361,7 @@ function updateCache(
 
 
 /* ==========================================================
-   DNS STATUS
+   DNS LOCAL LISTENER STATUS
    ========================================================== */
 
 function updateDNS(dns) {
@@ -415,17 +402,19 @@ function updateDNS(dns) {
         status,
     );
 
+    /*
+     * IMPORTANT:
+     *
+     * This represents the LOCAL DNS listener.
+     *
+     * It is intentionally NOT used to display
+     * the upstream transport.
+     */
+
     setText(
         "dns-transport",
         `UDP ${host}:${port}`,
     );
-
-    /*
-     * This is the local listener, not the
-     * upstream transport.
-     *
-     * Do not claim TLS here.
-     */
 
     setText(
         "transport-security",
@@ -435,211 +424,189 @@ function updateDNS(dns) {
 
 
 /* ==========================================================
-   OPTIONAL BLOCKLIST DATA
+   UPSTREAM TRANSPORT
    ========================================================== */
 
-function updateOptionalSections(data) {
+function updateTransport(transport) {
+    if (
+        !transport ||
+        typeof transport !== "object"
+    ) {
+        return;
+    }
+
+    const displayName = (
+        transport.display_name ||
+        transport.transport ||
+        "Unknown"
+    );
+
     /*
-     * These fields may not exist in the current
-     * dashboard API response.
+     * Main transport label.
      */
+    setText(
+        "upstream-transport",
+        displayName,
+    );
 
+    /*
+     * Optional transport labels used by the
+     * dashboard template if present.
+     */
+    setText(
+        "active-transport",
+        displayName,
+    );
+
+    /*
+     * Security state.
+     */
+    setText(
+        "upstream-security",
+        transport.secure
+            ? "Encrypted"
+            : "Standard DNS",
+    );
+
+    /*
+     * Provider / server information.
+     */
     if (
-        data.blocklists &&
-        typeof data.blocklists === "object"
+        transport.provider
     ) {
         setText(
-            "blocklist-count",
-            formatNumber(
-                data.blocklists.loaded_lists,
-            ),
+            "upstream-provider",
+            transport.provider,
         );
-
+    } else if (
+        transport.server
+    ) {
         setText(
-            "blocked-domain-count",
-            formatNumber(
-                data.blocklists.total_domains,
-            ),
+            "upstream-provider",
+            transport.server,
         );
-    }
-
-    if (
+    } else if (
         Array.isArray(
-            data.filters,
-        )
+            transport.servers,
+        ) &&
+        transport.servers.length > 0
     ) {
-        const enabled = data.filters.filter(
-            (filter) => (
-                filter &&
-                filter.enabled === true
-            ),
-        );
-
         setText(
-            "filter-count",
-            formatNumber(
-                enabled.length,
-            ),
+            "upstream-provider",
+            transport.servers[0],
+        );
+    }
+
+    /*
+     * Endpoint.
+     */
+    if (
+        transport.endpoint
+    ) {
+        setText(
+            "upstream-endpoint",
+            transport.endpoint,
+        );
+    }
+
+    /*
+     * Protocol.
+     */
+    if (
+        transport.transport === "doh"
+    ) {
+        setText(
+            "upstream-protocol",
+            transport.http2
+                ? "HTTPS / HTTP/2"
+                : "HTTPS / HTTP/1.1",
+        );
+    } else if (
+        transport.transport === "dot"
+    ) {
+        setText(
+            "upstream-protocol",
+            "TLS / DNS-over-TLS",
+        );
+    } else if (
+        transport.transport === "udp"
+    ) {
+        setText(
+            "upstream-protocol",
+            "UDP",
+        );
+    }
+
+    /*
+     * TLS verification.
+     */
+    if (
+        transport.tls_verification !== undefined
+    ) {
+        setText(
+            "upstream-tls",
+            transport.tls_verification
+                ? "Enabled"
+                : "Disabled",
         );
     }
 }
-
-
-/* ==========================================================
-   QUERY CHART
-   ========================================================== */
-
-function updateQueryChart(metrics) {
-    const canvas = getElement(
-        "query-chart",
-    );
-
-    if (
-        !canvas ||
-        !metrics ||
-        typeof metrics !== "object"
-    ) {
-        return;
-    }
-
-    const context = canvas.getContext(
-        "2d",
-    );
-
-    if (!context) {
-        return;
-    }
-
-    const queries = Array.isArray(
-        metrics.recent_queries,
-    )
-        ? metrics.recent_queries
-        : [];
-
-    const blocked = Array.isArray(
-        metrics.recent_blocked,
-    )
-        ? metrics.recent_blocked
-        : [];
-
-    const queryData = queries
-        .slice(-MAX_HISTORY_POINTS)
-        .map(Number)
-        .filter(Number.isFinite);
-
-    const blockedData = blocked
-        .slice(-MAX_HISTORY_POINTS)
-        .map(Number)
-        .filter(Number.isFinite);
-
-    const width = canvas.width;
-    const height = canvas.height;
-
-    context.clearRect(
-        0,
-        0,
-        width,
-        height,
-    );
-
-    if (
-        queryData.length === 0 &&
-        blockedData.length === 0
-    ) {
-        return;
-    }
-
-    const maximum = Math.max(
-        1,
-        ...queryData,
-        ...blockedData,
-    );
-
-    function drawLine(values) {
-        if (values.length === 0) {
-            return;
-        }
-
-        context.beginPath();
-
-        values.forEach(
-            (value, index) => {
-                const x = (
-                    index /
-                    Math.max(
-                        1,
-                        values.length - 1,
-                    )
-                ) * width;
-
-                const y = (
-                    height -
-                    (
-                        Math.max(
-                            0,
-                            value,
-                        ) / maximum
-                    ) * height
-                );
-
-                if (index === 0) {
-                    context.moveTo(
-                        x,
-                        y,
-                    );
-                } else {
-                    context.lineTo(
-                        x,
-                        y,
-                    );
-                }
-            },
-        );
-
-        context.stroke();
-    }
-
-    drawLine(queryData);
-    drawLine(blockedData);
-}
-
-
 /* ==========================================================
    COMPLETE DASHBOARD UPDATE
    ========================================================== */
 
 function updateDashboard(data) {
+
     if (
         !data ||
         typeof data !== "object" ||
         !data.metrics ||
         typeof data.metrics !== "object"
     ) {
+
         throw new Error(
             "INVALID_DASHBOARD_DATA",
         );
     }
 
+
     updateMetrics(
         data.metrics,
     );
+
 
     updateCache(
         data.cache,
         data.metrics,
     );
 
+
     updateDNS(
         data.dns,
     );
+
+
+    /*
+     * THIS IS THE IMPORTANT FIX.
+     *
+     * The dashboard API returns:
+     *
+     * data.transport
+     *
+     * and this must be applied during every
+     * dashboard refresh.
+     */
+
+    updateTransport(
+        data.transport,
+    );
+
 
     updateOptionalSections(
         data,
     );
 
-    updateQueryChart(
-        data.metrics,
-    );
+
 
     setConnectionStatus(
         true,
@@ -653,6 +620,7 @@ function updateDashboard(data) {
    ========================================================== */
 
 async function refreshDashboard() {
+
     if (state.refreshing) {
         return;
     }
@@ -660,7 +628,9 @@ async function refreshDashboard() {
     state.refreshing = true;
 
     try {
-        const data = await fetchDashboard();
+
+        const data =
+            await fetchDashboard();
 
         updateDashboard(
             data,
@@ -668,15 +638,12 @@ async function refreshDashboard() {
 
     } catch (error) {
 
-        /*
-         * Do not expose exception details.
-         */
-
         if (
             error instanceof Error &&
             error.message ===
                 "AUTHENTICATION_REQUIRED"
         ) {
+
             setConnectionStatus(
                 false,
                 "Authentication required",
@@ -687,12 +654,14 @@ async function refreshDashboard() {
             error.message ===
                 "ACCESS_DENIED"
         ) {
+
             setConnectionStatus(
                 false,
                 "Access denied",
             );
 
         } else {
+
             setConnectionStatus(
                 false,
                 "Dashboard unavailable",
@@ -700,6 +669,7 @@ async function refreshDashboard() {
         }
 
     } finally {
+
         state.refreshing = false;
     }
 }
@@ -710,6 +680,7 @@ async function refreshDashboard() {
    ========================================================== */
 
 function startPolling() {
+
     if (state.timer !== null) {
         return;
     }
@@ -722,6 +693,7 @@ function startPolling() {
 
 
 function stopPolling() {
+
     if (state.timer === null) {
         return;
     }
@@ -735,10 +707,34 @@ function stopPolling() {
 
 
 /* ==========================================================
+   MANUAL REFRESH
+   ========================================================== */
+
+function initializeRefreshButton() {
+
+    const button = getElement(
+        "refreshDashboard",
+    );
+
+    if (!button) {
+        return;
+    }
+
+    button.addEventListener(
+        "click",
+        () => {
+            refreshDashboard();
+        },
+    );
+}
+
+
+/* ==========================================================
    MOBILE SIDEBAR
    ========================================================== */
 
 function initializeNavigation() {
+
     const menuButton = getElement(
         "menuButton",
     );
@@ -757,6 +753,7 @@ function initializeNavigation() {
     menuButton.addEventListener(
         "click",
         () => {
+
             const open =
                 sidebar.classList.toggle(
                     "open",
@@ -776,6 +773,7 @@ function initializeNavigation() {
    ========================================================== */
 
 function initializeDashboard() {
+
     if (state.initialized) {
         return;
     }
@@ -783,6 +781,8 @@ function initializeDashboard() {
     state.initialized = true;
 
     initializeNavigation();
+
+    initializeRefreshButton();
 
     refreshDashboard();
 
@@ -802,10 +802,13 @@ document.addEventListener(
             document.visibilityState ===
             "visible"
         ) {
+
             refreshDashboard();
+
             startPolling();
 
         } else {
+
             stopPolling();
         }
     },
@@ -820,6 +823,7 @@ if (
     document.readyState ===
     "loading"
 ) {
+
     document.addEventListener(
         "DOMContentLoaded",
         initializeDashboard,
@@ -827,6 +831,8 @@ if (
             once: true,
         },
     );
+
 } else {
+
     initializeDashboard();
 }

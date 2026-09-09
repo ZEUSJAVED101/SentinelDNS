@@ -1,0 +1,619 @@
+/*
+ * SentinelDNS
+ * Upstream DNS Page
+ */
+
+.upstream-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 18px;
+}
+
+
+/* ==========================================================
+   FORM
+   ========================================================== */
+
+.upstream-form {
+    display: grid;
+    gap: 20px;
+}
+
+
+.upstream-section {
+    padding: 18px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--bg-secondary);
+}
+
+
+.upstream-section-title {
+    margin-bottom: 4px;
+
+    color: var(--text-primary);
+
+    font-size: 14px;
+    font-weight: 700;
+}
+
+
+.upstream-section-description {
+    margin-bottom: 16px;
+
+    color: var(--text-muted);
+
+    font-size: 12px;
+}
+
+
+/* ==========================================================
+   TRANSPORT SELECTOR
+   ========================================================== */
+
+.transport-options {
+    display: grid;
+
+    grid-template-columns:
+        repeat(3, minmax(0, 1fr));
+
+    gap: 10px;
+}
+
+
+.transport-option {
+    position: relative;
+
+    display: block;
+
+    padding: 14px;
+
+    border: 1px solid var(--border);
+
+    border-radius: var(--radius-md);
+
+    background: var(--panel-bg);
+
+    cursor: pointer;
+
+    transition:
+        border-color var(--transition),
+        background var(--transition),
+        transform var(--transition);
+}
+
+
+.transport-option:hover {
+    border-color: var(--border-light);
+
+    background: var(--panel-bg-hover);
+
+    transform: translateY(-1px);
+}
+
+
+.transport-option.active {
+    border-color: var(--accent);
+
+    background:
+        rgba(
+            53,
+            212,
+            154,
+            0.06
+        );
+}
+
+
+.transport-option input {
+    position: absolute;
+
+    opacity: 0;
+
+    pointer-events: none;
+}
+
+
+.transport-name {
+    color: var(--text-primary);
+
+    font-size: 13px;
+    font-weight: 700;
+}
+
+
+.transport-description {
+    margin-top: 4px;
+
+    color: var(--text-muted);
+
+    font-size: 11px;
+}
+
+
+/* ==========================================================
+   PROVIDERS
+   ========================================================== */
+
+.provider-options {
+    display: grid;
+
+    grid-template-columns:
+        repeat(3, minmax(0, 1fr));
+
+    gap: 10px;
+}
+
+
+.provider-option {
+    position: relative;
+
+    padding: 13px;
+
+    border: 1px solid var(--border);
+
+    border-radius: var(--radius-md);
+
+    background: var(--panel-bg);
+
+    cursor: pointer;
+
+    transition:
+        border-color var(--transition),
+        background var(--transition);
+}
+
+
+.provider-option:hover {
+    border-color: var(--border-light);
+
+    background: var(--panel-bg-hover);
+}
+
+
+.provider-option.active {
+    border-color: var(--accent);
+
+    background:
+        rgba(
+            53,
+            212,
+            154,
+            0.06
+        );
+}
+
+
+.provider-option input {
+    position: absolute;
+
+    opacity: 0;
+
+    pointer-events: none;
+}
+
+
+.provider-name {
+    color: var(--text-primary);
+
+    font-size: 13px;
+    font-weight: 700;
+}
+
+
+.provider-host {
+    margin-top: 4px;
+
+    color: var(--text-muted);
+
+    font-size: 11px;
+}
+
+
+/* ==========================================================
+   FIELDS
+   ========================================================== */
+
+.upstream-field {
+    display: grid;
+    gap: 7px;
+}
+
+
+.upstream-label {
+    color: var(--text-secondary);
+
+    font-size: 12px;
+    font-weight: 600;
+}
+
+
+.upstream-input,
+.upstream-select {
+    width: 100%;
+
+    padding: 10px 11px;
+
+    border: 1px solid var(--border);
+
+    border-radius: var(--radius-sm);
+
+    background: var(--bg-tertiary);
+
+    color: var(--text-primary);
+
+    outline: none;
+}
+
+
+.upstream-input::placeholder {
+    color: var(--text-muted);
+}
+
+
+.upstream-input:focus,
+.upstream-select:focus {
+    border-color: var(--accent);
+
+    box-shadow:
+        0 0 0 2px
+        rgba(
+            53,
+            212,
+            154,
+            0.10
+        );
+}
+
+
+.upstream-grid {
+    display: grid;
+
+    grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+
+    gap: 12px;
+}
+
+
+/* ==========================================================
+   SERVER LIST
+   ========================================================== */
+
+.server-list {
+    display: grid;
+
+    gap: 8px;
+}
+
+
+.server-row {
+    display: grid;
+
+    grid-template-columns:
+        minmax(0, 1fr) auto;
+
+    gap: 8px;
+}
+
+
+.server-remove {
+    padding: 0 12px;
+
+    border: 1px solid
+        rgba(
+            240,
+            91,
+            103,
+            0.25
+        );
+
+    border-radius: var(--radius-sm);
+
+    background:
+        rgba(
+            240,
+            91,
+            103,
+            0.08
+        );
+
+    color: var(--danger);
+
+    font-size: 12px;
+}
+
+
+.server-remove:hover {
+    background:
+        rgba(
+            240,
+            91,
+            103,
+            0.14
+        );
+}
+
+
+.add-server {
+    margin-top: 9px;
+
+    padding: 8px 11px;
+
+    border: 1px solid var(--border);
+
+    border-radius: var(--radius-sm);
+
+    background: var(--panel-bg);
+
+    color: var(--text-secondary);
+
+    font-size: 12px;
+}
+
+
+.add-server:hover {
+    border-color: var(--accent);
+
+    color: var(--accent);
+}
+
+
+/* ==========================================================
+   ACTIONS
+   ========================================================== */
+
+.upstream-actions {
+    display: flex;
+
+    justify-content: flex-end;
+
+    gap: 9px;
+
+    padding-top: 2px;
+}
+
+
+.upstream-button {
+    padding: 9px 14px;
+
+    border-radius: var(--radius-sm);
+
+    font-size: 12px;
+    font-weight: 600;
+}
+
+
+.upstream-button-primary {
+    border: 1px solid var(--accent-dark);
+
+    background: var(--accent);
+
+    color: #04120d;
+}
+
+
+.upstream-button-primary:hover {
+    background: var(--accent-hover);
+}
+
+
+.upstream-button-secondary {
+    border: 1px solid var(--border);
+
+    background: var(--panel-bg);
+
+    color: var(--text-secondary);
+}
+
+
+.upstream-button-secondary:hover {
+    border-color: var(--border-light);
+
+    color: var(--text-primary);
+}
+
+
+.upstream-button:disabled {
+    opacity: 0.55;
+
+    cursor: not-allowed;
+}
+
+
+/* ==========================================================
+   STATUS MESSAGE
+   ========================================================== */
+
+.upstream-message {
+    display: none;
+
+    padding: 11px 13px;
+
+    border-radius: var(--radius-sm);
+
+    font-size: 12px;
+}
+
+
+.upstream-message.visible {
+    display: block;
+}
+
+
+.upstream-message.success {
+    border: 1px solid
+        rgba(
+            53,
+            212,
+            154,
+            0.20
+        );
+
+    background:
+        rgba(
+            53,
+            212,
+            154,
+            0.07
+        );
+
+    color: var(--accent);
+}
+
+
+.upstream-message.error {
+    border: 1px solid
+        rgba(
+            240,
+            91,
+            103,
+            0.20
+        );
+
+    background:
+        rgba(
+            240,
+            91,
+            103,
+            0.07
+        );
+
+    color: var(--danger);
+}
+
+
+/* ==========================================================
+   ACTIVE CONFIGURATION
+   ========================================================== */
+
+.active-upstream {
+    display: grid;
+
+    gap: 0;
+}
+
+
+.active-item {
+    padding: 13px 0;
+
+    border-bottom:
+        1px solid var(--border);
+}
+
+
+.active-item:first-child {
+    padding-top: 0;
+}
+
+
+.active-item:last-child {
+    padding-bottom: 0;
+
+    border-bottom: 0;
+}
+
+
+.active-label {
+    margin-bottom: 4px;
+
+    color: var(--text-muted);
+
+    font-size: 10px;
+    font-weight: 700;
+
+    text-transform: uppercase;
+
+    letter-spacing: 0.07em;
+}
+
+
+.active-value {
+    color: var(--text-primary);
+
+    font-size: 13px;
+    font-weight: 600;
+
+    word-break: break-word;
+}
+
+
+.active-secure {
+    display: inline-flex;
+
+    align-items: center;
+
+    gap: 6px;
+
+    margin-top: 5px;
+
+    color: var(--accent);
+
+    font-size: 11px;
+}
+
+
+.active-secure-dot {
+    width: 6px;
+    height: 6px;
+
+    border-radius: 50%;
+
+    background: var(--accent);
+}
+
+
+/* ==========================================================
+   EMPTY / LOADING
+   ========================================================== */
+
+.upstream-loading {
+    color: var(--text-muted);
+
+    font-size: 12px;
+}
+
+
+.upstream-empty {
+    color: var(--text-muted);
+
+    font-size: 12px;
+
+    line-height: 1.5;
+}
+
+
+/* ==========================================================
+   RESPONSIVE
+   ========================================================== */
+
+@media (
+    max-width: 900px
+) {
+    .upstream-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+
+@media (
+    max-width: 650px
+) {
+    .transport-options,
+    .provider-options,
+    .upstream-grid {
+        grid-template-columns: 1fr;
+    }
+
+
+    .upstream-actions {
+        justify-content: stretch;
+
+        flex-direction: column;
+    }
+
+
+    .upstream-button {
+        width: 100%;
+    }
+}

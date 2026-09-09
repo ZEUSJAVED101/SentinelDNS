@@ -10,7 +10,9 @@ Responsibilities:
 - Forward allowed queries upstream
 - Cache successful responses
 - Record aggregate runtime metrics
+- Record bounded security events
 - Record bounded, sanitized recent-query audit data
+- Support safe runtime upstream replacement
 
 Security principles:
 
@@ -18,13 +20,16 @@ Security principles:
 - Never store client addresses
 - Never store authentication data
 - Query audit memory is strictly bounded
+- Security event memory is strictly bounded
 - Metrics and audit logging must never interrupt DNS resolution
 - Fail-safe DNS response handling
+- Failed upstream reconfiguration must not replace the active upstream
 """
 
 from __future__ import annotations
 
 import time
+from threading import RLock
 
 from dns_engine.cache import DNSCache
 from dns_engine.filters.manager import FilterManager
@@ -77,6 +82,15 @@ class DNSResolver:
 
         self.logger = DNSLogger()
 
+        # --------------------------------------------------
+        # Live upstream transport.
+        #
+        # The lock protects runtime replacement of the
+        # upstream object while DNS queries are being served.
+        # --------------------------------------------------
+
+        self._upstream_lock = RLock()
+
         self.upstream = DNSUpstream()
 
         self.metrics = (
@@ -92,6 +106,84 @@ class DNSResolver:
         self.query_log: DNSQueryLog = query_log
 
     # ======================================================
+    # UPSTREAM RUNTIME CONFIGURATION
+    # ======================================================
+
+    def replace_upstream(
+        self,
+        upstream: DNSUpstream,
+    ) -> None:
+        """
+        Replace the live upstream DNS transport.
+
+        The new DNSUpstream must already be successfully
+        constructed and validated before this method is
+        called.
+
+        If construction of a new upstream fails, this method
+        is never reached and the current upstream remains
+        active.
+
+        The old upstream is closed after the new upstream has
+        been installed.
+        """
+
+        if not isinstance(
+            upstream,
+            DNSUpstream,
+        ):
+            raise TypeError(
+                "upstream must be a DNSUpstream instance."
+            )
+
+        with self._upstream_lock:
+
+            old_upstream = self.upstream
+
+            self.upstream = upstream
+
+        if old_upstream is upstream:
+            return
+
+        try:
+
+            old_upstream.close()
+
+        except Exception:
+
+            # Cleanup must never break DNS resolution.
+            pass
+
+    def upstream_info(
+        self,
+    ) -> dict[str, object]:
+        """
+        Return safe information about the active
+        upstream transport.
+
+        No credentials or authentication material is
+        returned.
+        """
+
+        with self._upstream_lock:
+
+            upstream = self.upstream
+
+            try:
+
+                return upstream.description()
+
+            except Exception:
+
+                return {
+                    "transport": getattr(
+                        upstream,
+                        "transport",
+                        "unknown",
+                    ),
+                }
+
+    # ======================================================
     # RESPONSE CODE
     # ======================================================
 
@@ -100,7 +192,7 @@ class DNSResolver:
         response: bytes,
     ) -> int | None:
         """
-        Extract DNS RCODE from a DNS response.
+        Extract the DNS RCODE from a DNS response.
 
         Returns None when the response is too short.
         """
@@ -144,6 +236,7 @@ class DNSResolver:
             )
 
         except Exception:
+
             return
 
     def _record_latency(
@@ -166,6 +259,7 @@ class DNSResolver:
             )
 
         except Exception:
+
             return
 
     # ======================================================
@@ -187,6 +281,7 @@ class DNSResolver:
         )
 
         if value is None:
+
             value = getattr(
                 query,
                 "qtype",
@@ -194,6 +289,7 @@ class DNSResolver:
             )
 
         if value is None:
+
             value = getattr(
                 query,
                 "record_type",
@@ -207,7 +303,10 @@ class DNSResolver:
 
             return int(value)
 
-        except (TypeError, ValueError):
+        except (
+            TypeError,
+            ValueError,
+        ):
 
             return 1
 
@@ -230,6 +329,7 @@ class DNSResolver:
         )
 
         if value is None:
+
             value = getattr(
                 query,
                 "qclass",
@@ -243,7 +343,10 @@ class DNSResolver:
 
             return int(value)
 
-        except (TypeError, ValueError):
+        except (
+            TypeError,
+            ValueError,
+        ):
 
             return 1
 
@@ -299,7 +402,65 @@ class DNSResolver:
             )
 
         except Exception:
+
             # Audit logging must never affect DNS.
+            return
+
+    # ======================================================
+    # SECURITY EVENT
+    # ======================================================
+
+    def _record_security_event(
+        self,
+        *,
+        filter_name: str | None,
+        reason: str | None,
+    ) -> None:
+        """
+        Record a safe security event.
+
+        The metrics layer intentionally stores only:
+
+        - event type
+        - filter name
+        - action
+        - reason
+
+        The queried domain, client address and raw DNS packet
+        are NOT stored in the security event.
+
+        Security event recording must never interrupt DNS.
+        """
+
+        try:
+
+            safe_filter_name = (
+                filter_name
+                if isinstance(
+                    filter_name,
+                    str,
+                )
+                else "Unknown"
+            )
+
+            safe_reason = (
+                reason
+                if isinstance(
+                    reason,
+                    str,
+                )
+                else ""
+            )
+
+            self.metrics.record_security_event(
+                filter_name=safe_filter_name,
+                reason=safe_reason,
+                action="BLOCKED",
+                event_type="DNS_FILTER",
+            )
+
+        except Exception:
+
             return
 
     # ======================================================
@@ -325,6 +486,7 @@ class DNSResolver:
             self.metrics.record_query()
 
         except Exception:
+
             pass
 
         # ==================================================
@@ -420,6 +582,7 @@ class DNSResolver:
                 self.metrics.record_cache_hit()
 
             except Exception:
+
                 pass
 
             self._record_response_metrics(
@@ -454,6 +617,7 @@ class DNSResolver:
             self.metrics.record_cache_miss()
 
         except Exception:
+
             pass
 
         # ==================================================
@@ -484,7 +648,21 @@ class DNSResolver:
                 self.metrics.record_blocked()
 
             except Exception:
+
                 pass
+
+            # --------------------------------------------------
+            # Security event.
+            #
+            # This is connected to the real filter decision,
+            # so the Security Events page can consume actual
+            # DNS blocking activity.
+            # --------------------------------------------------
+
+            self._record_security_event(
+                filter_name=decision.filter_name,
+                reason=decision.reason,
+            )
 
             response = DNSResponseBuilder.nxdomain(
                 packet,
@@ -522,6 +700,7 @@ class DNSResolver:
             self.metrics.record_allowed()
 
         except Exception:
+
             pass
 
         # ==================================================
@@ -535,6 +714,7 @@ class DNSResolver:
             )
 
         except Exception:
+
             # Logging must never break DNS.
             pass
 
@@ -544,7 +724,19 @@ class DNSResolver:
 
         try:
 
-            response = self.upstream.query(
+            # --------------------------------------------------
+            # Obtain a stable reference to the active upstream.
+            #
+            # The reference is captured while holding the lock.
+            # This prevents a management operation from causing
+            # an invalid intermediate reference.
+            # --------------------------------------------------
+
+            with self._upstream_lock:
+
+                upstream = self.upstream
+
+            response = upstream.query(
                 packet,
             )
 
@@ -567,6 +759,7 @@ class DNSResolver:
                 self.metrics.record_upstream_failure()
 
             except Exception:
+
                 pass
 
             response = DNSResponseBuilder.servfail(
@@ -605,6 +798,7 @@ class DNSResolver:
             self.metrics.record_upstream_success()
 
         except Exception:
+
             pass
 
         # ==================================================
@@ -627,6 +821,7 @@ class DNSResolver:
             )
 
         except Exception:
+
             # Cache failure must never break DNS.
             pass
 

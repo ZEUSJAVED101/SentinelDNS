@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+{% block title %}Clients — SentinelDNS{% endblock %}
+{% block page_title %}Clients{% endblock %}
+
+{% block content %}
+
+<link rel="stylesheet" href="{{ url_for('static', path='css/clients.css') }}">
+
+<div class="clients-page">
+    <header class="clients-header">
+        <div>
+            <p class="clients-eyebrow">NETWORK INVENTORY</p>
+            <h1>DHCP Clients</h1>
+            <p class="clients-description">
+                Manage persistent DHCP client records, static reservations and address exclusions.
+            </p>
+        </div>
+
+        <div class="clients-header-actions">
+            <span class="clients-readonly-badge">CONTROLLED ACCESS</span>
+            <button type="button" class="clients-refresh" id="clientsRefresh">Refresh</button>
+        </div>
+    </header>
+
+    <section class="clients-toolbar" aria-label="Client controls">
+        <label class="clients-search">
+            <span>Search clients</span>
+            <input id="clientsSearch" type="search" maxlength="100" autocomplete="off"
+                   placeholder="Client ID, hostname or IP address">
+        </label>
+        <span id="clientsResultSummary" class="clients-result-summary">Loading…</span>
+    </section>
+
+    <section class="clients-selection-bar" aria-label="Selected client actions">
+        <div>
+            <strong id="clientsSelectionCount">0 selected</strong>
+            <span>Select clients below to apply DHCP policy.</span>
+        </div>
+        <div class="clients-selection-actions">
+            <button type="button" class="clients-action clients-action-reserve" id="clientsReserve" disabled>
+                Reserve selected
+            </button>
+            <button type="button" class="clients-action clients-action-exclude" id="clientsExclude" disabled>
+                Exclude selected IPs
+            </button>
+            <button type="button" class="clients-action clients-action-clear" id="clientsClearSelection" disabled>
+                Clear selection
+            </button>
+        </div>
+    </section>
+
+    <div id="clientsMessage" class="clients-message" role="status" aria-live="polite" hidden></div>
+
+    <section class="clients-stats" aria-label="Client statistics">
+        <article class="clients-card clients-stat-card">
+            <span class="clients-stat-label">MATCHING CLIENTS</span>
+            <strong id="clientsTotal" class="clients-stat-value">—</strong>
+            <span class="clients-stat-meta">Persistent DHCP records</span>
+        </article>
+        <article class="clients-card clients-stat-card">
+            <span class="clients-stat-label">ACTIVE</span>
+            <strong id="clientsActive" class="clients-stat-value">—</strong>
+            <span class="clients-stat-meta">Current unexpired leases</span>
+        </article>
+        <article class="clients-card clients-stat-card">
+            <span class="clients-stat-label">RESERVATIONS</span>
+            <strong id="clientsReservations" class="clients-stat-value">—</strong>
+            <span class="clients-stat-meta">Persistent fixed assignments</span>
+        </article>
+        <article class="clients-card clients-stat-card">
+            <span class="clients-stat-label">EXCLUSIONS</span>
+            <strong id="clientsExclusions" class="clients-stat-value">—</strong>
+            <span class="clients-stat-meta">Addresses withheld from dynamic allocation</span>
+        </article>
+    </section>
+
+    <section class="clients-card clients-panel">
+        <div class="clients-panel-header">
+            <div>
+                <p class="clients-kicker">PERSISTENT DHCP DATA</p>
+                <h2>Client Lease Records</h2>
+                <p class="clients-panel-help">Reservations keep a client on a fixed pool address. Exclusions prevent an address from being dynamically allocated.</p>
+            </div>
+            <span id="clientsCount" class="clients-panel-count">—</span>
+        </div>
+
+        <div class="clients-table-wrap">
+            <table class="clients-table">
+                <thead>
+                    <tr>
+                        <th scope="col" class="clients-select-col"><span class="sr-only">Select</span></th>
+                        <th scope="col">Client ID</th>
+                        <th scope="col">Hostname</th>
+                        <th scope="col">IP address</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Policy</th>
+                        <th scope="col">Lease end</th>
+                        <th scope="col">Remaining</th>
+                        <th scope="col">Action</th>
+                    </tr>
+                </thead>
+                <tbody id="clientsRows">
+                    <tr><td colspan="9" class="clients-empty">Loading client records…</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', path='js/clients.js') }}" defer></script>
+{% endblock %}

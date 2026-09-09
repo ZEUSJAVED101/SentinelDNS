@@ -1,226 +1,32 @@
 {% extends "base.html" %}
-
-{% block title %}
-    SentinelDNS — Blocklists
-{% endblock %}
-
+{% block title %}SentinelDNS — Blocklists{% endblock %}
+{% block page_title %}Blocklists{% endblock %}
 {% block content %}
-
-<section class="page-header">
-
-    <div>
-
-        <p class="eyebrow">
-            SECURITY
-        </p>
-
-        <h1>
-            Blocklists
-        </h1>
-
-        <p class="page-description">
-            Manage the DNS blocklists loaded by SentinelDNS.
-        </p>
-
-    </div>
-
-    <div class="page-actions">
-
-        <form
-            method="post"
-            action="/blocklists/reload-all"
-        >
-
-            <button
-                type="submit"
-                class="button"
-            >
-                Reload All
-            </button>
-
-        </form>
-
-    </div>
-
+<section class="manage-page">
+  <header class="manage-header">
+    <div><p class="manage-eyebrow">SECURITY</p><h1>Blocklists</h1><p>Manage loaded DNS blocklists and create safe custom domain lists.</p></div>
+    <div class="manage-actions"><button class="manage-button" id="reloadAll" type="button">Reload all</button><button class="manage-button primary" id="newBlocklist" type="button">Add blocklist</button></div>
+  </header>
+  <section class="manage-stats" id="blocklistStats" aria-label="Blocklist statistics"></section>
+  <section class="manage-panel">
+    <div class="manage-panel-header"><div><p class="manage-eyebrow">CONFIGURED LISTS</p><h2>Blocklists</h2></div><span class="manage-badge">Protected</span></div>
+    <div class="manage-table-wrap"><table class="manage-table"><thead><tr><th>Name</th><th>Domains</th><th>Type</th><th>Actions</th></tr></thead><tbody id="blocklistRows"><tr><td colspan="4">Loading…</td></tr></tbody></table></div>
+  </section>
+  <section class="manage-note"><strong>Safe custom lists</strong><p>Custom lists accept domain names only. Paths, URLs, IP addresses, executable content and oversized input are rejected before anything is written to disk.</p></section>
 </section>
 
-
-<section class="query-summary">
-
-    <article class="query-stat">
-
-        <span>
-            Blocklists
-        </span>
-
-        <strong>
-            {{ total_blocklists }}
-        </strong>
-
-    </article>
-
-
-    <article class="query-stat">
-
-        <span>
-            Blocked Domains
-        </span>
-
-        <strong>
-            {{ total_domains }}
-        </strong>
-
-    </article>
-
-</section>
-
-
-<section class="panel">
-
-    <div class="panel-header">
-
-        <div>
-
-            <p class="eyebrow">
-                ACTIVE LISTS
-            </p>
-
-            <h2>
-                Configured Blocklists
-            </h2>
-
-        </div>
-
-    </div>
-
-
-    <div class="table-wrapper">
-
-        <table>
-
-            <thead>
-
-                <tr>
-
-                    <th>
-                        Blocklist
-                    </th>
-
-                    <th>
-                        Domains
-                    </th>
-
-                    <th>
-                        Status
-                    </th>
-
-                    <th>
-                        Action
-                    </th>
-
-                </tr>
-
-            </thead>
-
-
-            <tbody>
-
-                {% for blocklist in blocklists %}
-
-                    <tr>
-
-                        <td>
-                            <strong>
-                                {{ blocklist.filename }}
-                            </strong>
-                        </td>
-
-
-                        <td>
-                            {{ blocklist.size }}
-                        </td>
-
-
-                        <td>
-
-                            {% if blocklist.exists %}
-
-                                <span class="status-badge">
-                                    LOADED
-                                </span>
-
-                            {% else %}
-
-                                <span class="status-badge">
-                                    MISSING
-                                </span>
-
-                            {% endif %}
-
-                        </td>
-
-
-                        <td>
-
-                            <form
-                                method="post"
-                                action="/blocklists/{{ blocklist.filename }}/reload"
-                            >
-
-                                <button
-                                    type="submit"
-                                    class="button"
-                                >
-                                    Reload
-                                </button>
-
-                            </form>
-
-                        </td>
-
-                    </tr>
-
-                {% else %}
-
-                    <tr>
-
-                        <td colspan="4">
-                            No blocklists found.
-                        </td>
-
-                    </tr>
-
-                {% endfor %}
-
-            </tbody>
-
-        </table>
-
-    </div>
-
-</section>
-
-
-<section class="security-note">
-
-    <div class="security-note-icon">
-        ✓
-    </div>
-
-    <div>
-
-        <strong>
-            Blocklist protection
-        </strong>
-
-        <p>
-            Blocklists are loaded from the configured
-            data/blocklists directory. Domains are normalized
-            before membership checks are performed.
-        </p>
-
-    </div>
-
-</section>
-
+<dialog class="manage-dialog" id="blocklistDialog" aria-labelledby="blocklistDialogTitle">
+  <form method="dialog" id="blocklistForm" class="manage-form">
+    <div class="dialog-header"><div><p class="manage-eyebrow">CUSTOM BLOCKLIST</p><h2 id="blocklistDialogTitle">Add blocklist</h2></div><button type="button" class="dialog-close" id="closeBlocklistDialog" aria-label="Close">×</button></div>
+    <label>List name<input id="blocklistName" name="name" maxlength="48" required autocomplete="off" placeholder="Work distractions"></label>
+    <label>GitHub source URL <span class="optional-label">(optional)</span><input id="blocklistSourceUrl" name="source_url" type="url" maxlength="2048" autocomplete="off" placeholder="https://github.com/owner/repo/blob/main/blocklist.txt"></label>
+    <p class="form-help">Use a public GitHub file URL. SentinelDNS converts it to a raw GitHub download and validates the downloaded domains server-side.</p>
+    <label>Domains, one per line <span class="optional-label">(used when no GitHub URL is supplied)</span><textarea id="blocklistContent" name="content" maxlength="2097152" rows="10" placeholder="example.com
+example.org"></textarea></label>
+    <p class="form-help">Maximum 100,000 domains / 2 MiB. Existing built-in lists cannot be edited or deleted here.</p>
+    <div class="dialog-actions"><button type="button" value="cancel" class="manage-button dialog-cancel">Cancel</button><button type="submit" value="save" class="manage-button primary" id="saveBlocklist">Save blocklist</button></div>
+    <p class="form-message" id="blocklistMessage" role="alert"></p>
+  </form>
+</dialog>
 {% endblock %}
+{% block scripts %}<link rel="stylesheet" href="{{ url_for('static', path='css/blocklists.css') }}"><script src="{{ url_for('static', path='js/blocklists.js') }}" defer></script>{% endblock %}

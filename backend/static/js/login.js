@@ -1,11 +1,9 @@
 /*
- * SentinelDNS Login
+ * SentinelDNS Login — Authentication STEP 1
  *
  * Security principles:
- *
  * - Never stores the JWT in JavaScript storage.
  * - Never reads the authentication cookie.
- * - Browser receives the HttpOnly cookie from /auth/login.
  * - Credentials are sent only to the same-origin API.
  * - No password/token logging.
  */
@@ -29,8 +27,24 @@ const loginButton = document.getElementById(
     "login-button",
 );
 
+const loginButtonText = document.querySelector(
+    ".login-button-text",
+);
+
+const passwordToggle = document.getElementById(
+    "password-toggle",
+);
+
+const forgotPasswordButton = document.getElementById(
+    "forgot-password",
+);
+
 const errorElement = document.getElementById(
     "login-error",
+);
+
+const infoElement = document.getElementById(
+    "login-info",
 );
 
 
@@ -62,6 +76,34 @@ function clearError() {
 }
 
 
+function showInfo(message) {
+
+    if (!infoElement) {
+        return;
+    }
+
+    infoElement.textContent = message;
+
+    infoElement.classList.add(
+        "visible",
+    );
+}
+
+
+function clearInfo() {
+
+    if (!infoElement) {
+        return;
+    }
+
+    infoElement.textContent = "";
+
+    infoElement.classList.remove(
+        "visible",
+    );
+}
+
+
 function setLoading(loading) {
 
     if (!loginButton) {
@@ -70,9 +112,72 @@ function setLoading(loading) {
 
     loginButton.disabled = loading;
 
-    loginButton.textContent = loading
-        ? "Signing in..."
-        : "Sign in";
+    loginButton.classList.toggle(
+        "loading",
+        loading,
+    );
+
+    if (loginButtonText) {
+        loginButtonText.textContent = loading
+            ? "Authenticating..."
+            : "Sign in securely";
+    }
+
+    if (usernameInput) {
+        usernameInput.disabled = loading;
+    }
+
+    if (passwordInput) {
+        passwordInput.disabled = loading;
+    }
+
+    if (passwordToggle) {
+        passwordToggle.disabled = loading;
+    }
+}
+
+
+function togglePassword() {
+
+    if (!passwordInput || !passwordToggle) {
+        return;
+    }
+
+    const showing = passwordInput.type === "text";
+
+    passwordInput.type = showing
+        ? "password"
+        : "text";
+
+    passwordToggle.textContent = showing
+        ? "Show"
+        : "Hide";
+
+    passwordToggle.title = showing
+        ? "Show password"
+        : "Hide password";
+
+    passwordToggle.setAttribute(
+        "aria-label",
+        showing
+            ? "Show password"
+            : "Hide password",
+    );
+
+    passwordToggle.setAttribute(
+        "aria-pressed",
+        String(!showing),
+    );
+}
+
+
+function showForgotPasswordMessage() {
+
+    clearError();
+
+    showInfo(
+        "Password recovery will be enabled in the next authentication step. Your existing login remains unchanged.",
+    );
 }
 
 
@@ -81,9 +186,15 @@ async function login(event) {
     event.preventDefault();
 
     clearError();
+    clearInfo();
 
-    const username = usernameInput.value.trim();
-    const password = passwordInput.value;
+    const username = usernameInput
+        ? usernameInput.value.trim()
+        : "";
+
+    const password = passwordInput
+        ? passwordInput.value
+        : "";
 
     if (!username || !password) {
 
@@ -97,11 +208,6 @@ async function login(event) {
     setLoading(true);
 
     try {
-
-        /*
-         * OAuth2PasswordRequestForm expects
-         * application/x-www-form-urlencoded.
-         */
 
         const body = new URLSearchParams();
 
@@ -152,14 +258,6 @@ async function login(event) {
             );
         }
 
-        /*
-         * We deliberately do NOT read or store
-         * access_token from the response.
-         *
-         * The server has already placed the JWT
-         * into an HttpOnly cookie.
-         */
-
         window.location.assign(
             "/dashboard",
         );
@@ -187,6 +285,24 @@ async function login(event) {
 
         setLoading(false);
     }
+}
+
+
+if (passwordToggle) {
+
+    passwordToggle.addEventListener(
+        "click",
+        togglePassword,
+    );
+}
+
+
+if (forgotPasswordButton) {
+
+    forgotPasswordButton.addEventListener(
+        "click",
+        showForgotPasswordMessage,
+    );
 }
 
 

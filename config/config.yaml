@@ -2,70 +2,52 @@ application:
   name: SentinelDNS
   version: 1.0.0
   debug: false
-
 server:
   host: 127.0.0.1
   port: 8000
-
 database:
   path: database/sentineldns.db
-
 dns:
-  # Supported transports:
-  # udp | doh | dot
-  transport: doh
-
+  transport: udp
   listen:
     host: 127.0.0.1
     port: 5300
-
   upstream:
     servers:
-      - 1.1.1.1
-      - 9.9.9.9
-
-    timeout: 5
+    - 1.1.1.1
+    timeout: 5.0
     retries: 2
     max_response_size: 4096
-
   doh:
-    enabled: true
+    enabled: false
     provider: cloudflare
     endpoint: https://cloudflare-dns.com/dns-query
-    timeout: 5
+    timeout: 5.0
     http2: true
     verify_tls: true
-
   dot:
-    enabled: true
+    enabled: false
     server: 1.1.1.1
     port: 853
-    timeout: 5
+    timeout: 5.0
     verify_tls: true
 dhcp:
   enabled: true
-
   listen:
     host: 0.0.0.0
     port: 67
-
-  interface: ""
-
-  server_ip: "192.168.10.1"
-  subnet_mask: "255.255.255.0"
-  gateway: "192.168.10.1"
-  dns_server: "192.168.10.1"
-
+  interface: ''
+  server_ip: 192.168.10.1
+  subnet_mask: 255.255.255.0
+  gateway: 192.168.10.1
+  dns_server: 192.168.10.1
   lease_time: 86400
-
   pool:
-    start: "192.168.10.100"
-    end: "192.168.10.200"
-
+    start: 192.168.10.100
+    end: 192.168.10.200
 logging:
   level: INFO
   file: logs/sentineldns.log
-
 security:
   algorithm: HS256
   access_token_expire_minutes: 30

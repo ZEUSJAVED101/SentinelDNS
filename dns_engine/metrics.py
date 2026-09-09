@@ -9,6 +9,7 @@ Responsibilities:
 - Track filtering decisions
 - Track upstream success/failure
 - Track bounded query latency statistics
+- Track bounded security events
 - Provide thread-safe read-only snapshots
 
 Security principles:
@@ -19,6 +20,7 @@ Security principles:
 - Never store DNS response contents
 - Keep time-series data bounded
 - Expose snapshots instead of mutable internal state
+- Security events contain only safe metadata
 """
 
 from __future__ import annotations
@@ -28,6 +30,38 @@ import time
 from collections import deque
 from dataclasses import dataclass
 from typing import Any
+
+
+# ==========================================================
+# SECURITY EVENT
+# ==========================================================
+
+
+@dataclass(frozen=True)
+class SecurityEvent:
+    """
+    Immutable security event.
+
+    Security events deliberately contain no:
+
+    - queried domain
+    - client IP address
+    - DNS packet contents
+    - DNS response contents
+
+    Only safe filtering metadata is retained.
+    """
+
+    timestamp: float
+    event_type: str
+    filter_name: str
+    action: str
+    reason: str
+
+
+# ==========================================================
+# METRICS SNAPSHOT
+# ==========================================================
 
 
 @dataclass(frozen=True)
@@ -60,6 +94,13 @@ class MetricsSnapshot:
     recent_queries: tuple[int, ...]
     recent_blocked: tuple[int, ...]
 
+    security_events: tuple[SecurityEvent, ...]
+
+
+# ==========================================================
+# DNS METRICS
+# ==========================================================
+
 
 class DNSMetrics:
     """
@@ -69,10 +110,12 @@ class DNSMetrics:
     dashboard reads metrics concurrently. Therefore all mutations
     and snapshots are protected by a lock.
 
-    The collector deliberately stores only aggregate information.
+    The collector deliberately stores only aggregate information
+    and bounded security metadata.
     """
 
     HISTORY_SIZE = 60
+    SECURITY_EVENT_HISTORY_SIZE = 100
 
     def __init__(self) -> None:
         """
@@ -145,6 +188,16 @@ class DNSMetrics:
 
         self._current_bucket_blocked = 0
 
+        # ------------------------------------------------------
+        # Security event history
+        # ------------------------------------------------------
+
+        self._security_events: deque[
+            SecurityEvent
+        ] = deque(
+            maxlen=self.SECURITY_EVENT_HISTORY_SIZE,
+        )
+
     # ==========================================================
     # INTERNAL HISTORY
     # ==========================================================
@@ -180,11 +233,11 @@ class DNSMetrics:
         for _ in range(elapsed):
 
             self._query_history.append(
-                self._current_bucket_queries
+                self._current_bucket_queries,
             )
 
             self._blocked_history.append(
-                self._current_bucket_blocked
+                self._current_bucket_blocked,
             )
 
             self._current_bucket_queries = 0
@@ -257,6 +310,86 @@ class DNSMetrics:
             self._blocked_queries += 1
 
             self._current_bucket_blocked += 1
+
+    def record_security_event(
+        self,
+        filter_name: str,
+        reason: str = "",
+        action: str = "BLOCKED",
+        event_type: str = "DNS_FILTER",
+    ) -> None:
+        """
+        Record a bounded security event.
+
+        Only safe metadata is retained.
+
+        Domain names, client addresses, packets and DNS response
+        contents are deliberately excluded.
+        """
+
+        if not isinstance(
+            filter_name,
+            str,
+        ):
+            filter_name = "Unknown"
+
+        if not isinstance(
+            reason,
+            str,
+        ):
+            reason = ""
+
+        if not isinstance(
+            action,
+            str,
+        ):
+            action = "BLOCKED"
+
+        if not isinstance(
+            event_type,
+            str,
+        ):
+            event_type = "DNS_FILTER"
+
+        filter_name = (
+            filter_name.strip()
+            or "Unknown"
+        )
+
+        reason = (
+            reason.strip()
+        )
+
+        action = (
+            action.strip()
+            or "BLOCKED"
+        )
+
+        event_type = (
+            event_type.strip()
+            or "DNS_FILTER"
+        )
+
+        # Keep event metadata bounded even if a filter
+        # accidentally supplies an excessively large value.
+        filter_name = filter_name[:100]
+        reason = reason[:200]
+        action = action[:50]
+        event_type = event_type[:100]
+
+        event = SecurityEvent(
+            timestamp=time.time(),
+            event_type=event_type,
+            filter_name=filter_name,
+            action=action,
+            reason=reason,
+        )
+
+        with self._lock:
+
+            self._security_events.append(
+                event,
+            )
 
     # ==========================================================
     # CACHE
@@ -526,7 +659,9 @@ class DNSMetrics:
                 ),
 
                 recent_queries=tuple(
-                    recent[-self.HISTORY_SIZE:]
+                    recent[
+                        -self.HISTORY_SIZE:
+                    ]
                 ),
 
                 recent_blocked=tuple(
@@ -539,7 +674,37 @@ class DNSMetrics:
                         self._current_bucket_blocked
                     ]
                 ),
+
+                security_events=tuple(
+                    self._security_events
+                ),
             )
+
+    # ==========================================================
+    # SECURITY EVENTS SNAPSHOT
+    # ==========================================================
+
+    def security_events(
+        self,
+    ) -> list[dict[str, Any]]:
+        """
+        Return a JSON-safe copy of recent security events.
+
+        No mutable internal objects are exposed.
+        """
+
+        with self._lock:
+
+            return [
+                {
+                    "timestamp": event.timestamp,
+                    "event_type": event.event_type,
+                    "filter_name": event.filter_name,
+                    "action": event.action,
+                    "reason": event.reason,
+                }
+                for event in self._security_events
+            ]
 
     # ==========================================================
     # DICTIONARY SNAPSHOT
@@ -622,6 +787,10 @@ class DNSMetrics:
             "recent_blocked": list(
                 snapshot.recent_blocked
             ),
+
+            "security_events": (
+                self.security_events()
+            ),
         }
 
     # ==========================================================
@@ -645,26 +814,38 @@ class DNSMetrics:
         with self._lock:
 
             self._total_queries = 0
+
             self._allowed_queries = 0
+
             self._blocked_queries = 0
 
             self._cache_hits = 0
+
             self._cache_misses = 0
 
             self._upstream_success = 0
+
             self._upstream_failures = 0
 
             self._formerr = 0
+
             self._nxdomain = 0
+
             self._servfail = 0
+
             self._noerror = 0
+
             self._other_rcodes = 0
 
             self._latency_total_ms = 0.0
+
             self._max_latency_ms = 0.0
 
             self._query_history.clear()
+
             self._blocked_history.clear()
+
+            self._security_events.clear()
 
             self._current_bucket_second = (
                 now_second

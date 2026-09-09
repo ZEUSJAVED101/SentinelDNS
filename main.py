@@ -43,6 +43,12 @@ from backend.api.dns_queries import (
 from backend.api.management import (
     router as management_router,
 )
+from backend.api.dhcp import (
+    router as dhcp_router,
+)
+from backend.api.clients import (
+    router as clients_router,
+)
 
 from backend.exceptions.handlers import (
     register_exception_handlers,
@@ -57,6 +63,7 @@ from database.database import init_database
 from database.models.user import User
 from dns_engine.resolver import DNSResolver
 from dns_engine.server import DNSServer
+from dhcp.persistent_controls import load_persistent_controls
 
 
 # ==========================================================
@@ -152,6 +159,14 @@ app.include_router(
 
 app.include_router(
     management_router,
+)
+
+app.include_router(
+    dhcp_router,
+)
+
+app.include_router(
+    clients_router,
 )
 
 
@@ -316,6 +331,12 @@ async def lifespan(
     application.state.dashboard_service = (
         dashboard_service
     )
+
+    # ------------------------------------------------------
+    # Restore persistent DHCP reservations/exclusions.
+    # ------------------------------------------------------
+
+    load_persistent_controls(dns_server)
 
     # ------------------------------------------------------
     # Start DNS server.

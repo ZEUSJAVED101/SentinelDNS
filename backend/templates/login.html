@@ -13,122 +13,194 @@
         content="noindex, nofollow"
     >
 
-    <title>SentinelDNS — Login</title>
+    <meta
+        name="color-scheme"
+        content="dark"
+    >
+
+    <title>SentinelDNS — Secure Administration</title>
 
     <link
         rel="stylesheet"
         href="/static/css/app.css"
     >
 
-    <style>
-        .login-page {
-            min-height: 100vh;
-            display: grid;
-            place-items: center;
-            padding: 24px;
-        }
-
-        .login-card {
-            width: min(420px, 100%);
-        }
-
-        .login-form {
-            display: grid;
-            gap: 16px;
-        }
-
-        .login-form label {
-            display: grid;
-            gap: 6px;
-        }
-
-        .login-form input {
-            width: 100%;
-            box-sizing: border-box;
-        }
-
-        .login-error {
-            display: none;
-        }
-
-        .login-error.visible {
-            display: block;
-        }
-
-        .login-button {
-            width: 100%;
-        }
-    </style>
+    <link
+        rel="stylesheet"
+        href="/static/css/login.css"
+    >
 </head>
 
-<body>
+<body class="login-body">
 
 <main class="login-page">
 
-    <section
-        class="login-card"
-        aria-labelledby="login-title"
-    >
+    <div class="login-background" aria-hidden="true">
+        <span class="login-grid"></span>
+        <span class="login-glow login-glow-one"></span>
+        <span class="login-glow login-glow-two"></span>
+    </div>
 
-        <header>
-            <h1 id="login-title">
-                SentinelDNS
-            </h1>
+    <section class="login-shell" aria-labelledby="login-title">
 
-            <p>
-                DNS management dashboard
-            </p>
-        </header>
+        <div class="login-brand-panel">
 
-        <form
-            id="login-form"
-            class="login-form"
-            method="post"
-            novalidate
-        >
-
-            <label for="username">
-                Username
-
-                <input
-                    id="username"
-                    name="username"
-                    type="text"
-                    autocomplete="username"
-                    required
-                    maxlength="128"
+            <div class="login-brand">
+                <img
+                    class="login-brand-logo"
+                    src="/static/images/sentineldns-logo.png"
+                    alt="SentinelDNS"
+                    width="300"
+                    height="231"
                 >
-            </label>
+            </div>
 
-            <label for="password">
-                Password
+            <div class="login-brand-copy">
+                <p class="login-eyebrow">
+                    DNS SECURITY APPLIANCE
+                </p>
 
-                <input
-                    id="password"
-                    name="password"
-                    type="password"
-                    autocomplete="current-password"
-                    required
-                    maxlength="256"
-                >
-            </label>
+                <h1>
+                    Secure control for your network.
+                </h1>
 
-            <p
-                id="login-error"
-                class="login-error"
-                role="alert"
-                aria-live="polite"
-            ></p>
+                <p>
+                    Manage DNS filtering, upstream resolution,
+                    DHCP, clients and security policies from one
+                    protected administration console.
+                </p>
+            </div>
 
-            <button
-                id="login-button"
-                class="login-button"
-                type="submit"
+            <div class="login-security-status" aria-label="Security status">
+                <span class="login-status-indicator" aria-hidden="true"></span>
+
+                <div>
+                    <strong>Protected administration</strong>
+                    <span>Authenticated access required</span>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="login-card-panel">
+
+            <div class="login-card-header">
+                <p class="login-kicker">ADMINISTRATOR ACCESS</p>
+
+                <h2 id="login-title">
+                    Sign in
+                </h2>
+
+                <p>
+                    Enter your administrator credentials to continue.
+                </p>
+            </div>
+
+            <form
+                id="login-form"
+                class="login-form"
+                method="post"
+                novalidate
             >
-                Sign in
-            </button>
 
-        </form>
+                <div class="login-field">
+                    <label for="username">
+                        Username
+                    </label>
+
+                    <div class="login-input-wrap">
+                        <span class="login-input-icon" aria-hidden="true">ID</span>
+
+                        <input
+                            id="username"
+                            name="username"
+                            type="text"
+                            autocomplete="username"
+                            required
+                            maxlength="128"
+                            spellcheck="false"
+                        >
+                    </div>
+                </div>
+
+                <div class="login-field">
+                    <label for="password">
+                        Password
+                    </label>
+
+                    <div class="login-input-wrap">
+                        <span class="login-input-icon" aria-hidden="true">••</span>
+
+                        <input
+                            id="password"
+                            name="password"
+                            type="password"
+                            autocomplete="current-password"
+                            required
+                            maxlength="256"
+                        >
+
+                        <button
+                            id="password-toggle"
+                            class="password-toggle"
+                            type="button"
+                            aria-label="Show password"
+                            aria-pressed="false"
+                        >
+                            Show
+                        </button>
+                    </div>
+                </div>
+
+                <div class="login-options">
+                    <span class="login-session-note">
+                        Secure administrator session
+                    </span>
+
+                    <button
+                        id="forgot-password"
+                        class="forgot-password"
+                        type="button"
+                    >
+                        Forgot password?
+                    </button>
+                </div>
+
+                <p
+                    id="login-error"
+                    class="login-message login-error"
+                    role="alert"
+                    aria-live="polite"
+                ></p>
+
+                <p
+                    id="login-info"
+                    class="login-message login-info"
+                    role="status"
+                    aria-live="polite"
+                ></p>
+
+                <button
+                    id="login-button"
+                    class="login-button"
+                    type="submit"
+                >
+                    <span class="login-button-text">Sign in securely</span>
+                    <span
+                        class="login-button-spinner"
+                        aria-hidden="true"
+                    ></span>
+                </button>
+
+            </form>
+
+            <div class="login-card-footer">
+                <span>SentinelDNS</span>
+                <span aria-hidden="true">•</span>
+                <span>Secure Administration</span>
+            </div>
+
+        </div>
 
     </section>
 

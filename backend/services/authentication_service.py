@@ -24,6 +24,7 @@ from backend.schemas.auth import Token
 from backend.schemas.user import UserCreate, UserResponse
 from backend.security.jwt import create_access_token
 from backend.security.password import hash_password, verify_password
+from database.enums.user_role import UserRole
 from database.models.user import User
 
 
@@ -94,6 +95,9 @@ class AuthenticationService:
 
         if not user.is_active:
             raise UserInactiveError()
+
+        if user.role != UserRole.ADMIN:
+            raise InvalidCredentialsError()
 
         access_token = create_access_token(
             subject=user.username,

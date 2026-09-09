@@ -1,352 +1,386 @@
 {% extends "base.html" %}
 
 {% block title %}
-    SentinelDNS — Upstream DNS
+Upstream DNS — SentinelDNS
 {% endblock %}
 
 {% block content %}
 
-<section class="page-header">
+<link rel="stylesheet" href="{{ url_for(
+        'static',
+        path='css/upstream.css'
+    ) }}">
+
+<div class="page-header">
 
     <div>
 
-        <p class="eyebrow">
-            DNS ENGINE
-        </p>
+        <div class="eyebrow">
+            DNS CONFIGURATION
+        </div>
 
         <h1>
             Upstream DNS
         </h1>
 
-        <p class="page-description">
-            View the active upstream DNS transport and its
-            configured non-secret connection parameters.
+        <p>
+            Configure and monitor the DNS transport used
+            by SentinelDNS for external resolution.
         </p>
 
     </div>
 
-    <div class="page-actions">
-
-        <span class="status-badge">
-            CONFIGURED
-        </span>
-
-    </div>
-
-</section>
+</div>
 
 
-<section class="query-summary">
+<!-- ==========================================================
+     STATUS MESSAGE
+     ========================================================== -->
 
-    <article class="query-stat">
-
-        <span>
-            Transport
-        </span>
-
-        <strong>
-            {{ transport.display_name }}
-        </strong>
-
-    </article>
+<div id="upstream-message" class="upstream-message"></div>
 
 
-    <article class="query-stat">
-
-        <span>
-            Security
-        </span>
-
-        <strong>
-            {% if transport.secure %}
-                Encrypted
-            {% else %}
-                Unencrypted
-            {% endif %}
-        </strong>
-
-    </article>
+<div class="upstream-layout">
 
 
-    <article class="query-stat">
+    <!-- ======================================================
+         CONFIGURATION
+         ====================================================== -->
 
-        <span>
-            Configuration
-        </span>
+    <div class="card">
 
-        <strong>
-            {% if transport.configured %}
-                Active
-            {% else %}
-                Unavailable
-            {% endif %}
-        </strong>
+        <div class="card-header">
 
-    </article>
+            <div>
 
-</section>
+                <h2>
+                    DNS Transport
+                </h2>
+
+                <p>
+                    Select the transport used for upstream
+                    DNS resolution.
+                </p>
+
+            </div>
+
+        </div>
 
 
-<section class="panel">
+        <div class="upstream-form">
 
-    <div class="panel-header">
 
-        <div>
+            <!-- ==================================================
+                 TRANSPORT
+                 ================================================== -->
 
-            <p class="eyebrow">
-                ACTIVE TRANSPORT
-            </p>
+            <section class="upstream-section">
 
-            <h2>
-                Upstream Configuration
-            </h2>
+                <div class="upstream-section-title">
+                    Transport
+                </div>
+
+                <div class="upstream-section-description">
+                    SentinelDNS supports standard UDP and
+                    encrypted DNS transports.
+                </div>
+
+
+                <div class="transport-options">
+
+
+                    <label class="transport-option">
+
+                        <input type="radio" name="transport" value="doh" checked>
+
+                        <div class="transport-name">
+                            DNS-over-HTTPS
+                        </div>
+
+                        <div class="transport-description">
+                            HTTPS + TLS encryption
+                        </div>
+
+                    </label>
+
+
+                    <label class="transport-option">
+
+                        <input type="radio" name="transport" value="dot">
+
+                        <div class="transport-name">
+                            DNS-over-TLS
+                        </div>
+
+                        <div class="transport-description">
+                            TLS encrypted DNS
+                        </div>
+
+                    </label>
+
+
+                    <label class="transport-option">
+
+                        <input type="radio" name="transport" value="udp">
+
+                        <div class="transport-name">
+                            UDP
+                        </div>
+
+                        <div class="transport-description">
+                            Standard DNS transport
+                        </div>
+
+                    </label>
+
+
+                </div>
+
+            </section>
+
+
+            <!-- ==================================================
+                 DNS-OVER-HTTPS
+                 ================================================== -->
+
+            <section id="doh-section" class="upstream-section">
+
+                <div class="upstream-section-title">
+                    DoH Provider
+                </div>
+
+                <div class="upstream-section-description">
+                    Select a trusted provider or configure
+                    your own HTTPS DNS endpoint.
+                </div>
+
+
+                <div class="provider-options">
+
+
+                    <label class="provider-option">
+
+                        <input type="radio" name="provider" value="cloudflare" checked>
+
+                        <div class="provider-name">
+                            Cloudflare
+                        </div>
+
+                        <div class="provider-host">
+                            cloudflare-dns.com
+                        </div>
+
+                    </label>
+
+
+                    <label class="provider-option">
+
+                        <input type="radio" name="provider" value="google">
+
+                        <div class="provider-name">
+                            Google
+                        </div>
+
+                        <div class="provider-host">
+                            dns.google
+                        </div>
+
+                    </label>
+
+
+                    <label class="provider-option">
+
+                        <input type="radio" name="provider" value="quad9">
+
+                        <div class="provider-name">
+                            Quad9
+                        </div>
+
+                        <div class="provider-host">
+                            dns.quad9.net
+                        </div>
+
+                    </label>
+
+
+                    <label class="provider-option">
+
+                        <input type="radio" name="provider" value="custom">
+
+                        <div class="provider-name">
+                            Custom
+                        </div>
+
+                        <div class="provider-host">
+                            HTTPS DNS endpoint
+                        </div>
+
+                    </label>
+
+
+                </div>
+
+
+                <!-- Custom DoH -->
+
+                <div id="custom-doh-section" class="upstream-field custom-doh-section" hidden>
+
+                    <label class="upstream-label" for="doh-endpoint">
+                        DoH endpoint
+                    </label>
+
+                    <input id="doh-endpoint" class="upstream-input" type="url"
+                        placeholder="https://dns.example.com/dns-query" autocomplete="off">
+
+                </div>
+
+            </section>
+
+
+            <!-- ==================================================
+                 DNS-OVER-TLS
+                 ================================================== -->
+
+            <section id="dot-section" class="upstream-section" hidden>
+
+                <div class="upstream-section-title">
+                    DoT Server
+                </div>
+
+                <div class="upstream-section-description">
+                    Configure the DNS-over-TLS server and
+                    TLS port.
+                </div>
+
+
+                <div class="upstream-grid">
+
+
+                    <div class="upstream-field">
+
+                        <label class="upstream-label" for="dot-server">
+                            Server
+                        </label>
+
+                        <input id="dot-server" class="upstream-input" type="text" placeholder="1.1.1.1"
+                            autocomplete="off">
+
+                    </div>
+
+
+                    <div class="upstream-field">
+
+                        <label class="upstream-label" for="dot-port">
+                            Port
+                        </label>
+
+                        <input id="dot-port" class="upstream-input" type="number" min="1" max="65535" value="853">
+
+                    </div>
+
+
+                </div>
+
+            </section>
+
+
+            <!-- ==================================================
+                 UDP
+                 ================================================== -->
+
+            <section id="udp-section" class="upstream-section" hidden>
+
+                <div class="upstream-section-title">
+                    UDP Servers
+                </div>
+
+                <div class="upstream-section-description">
+                    Configure one or more standard DNS
+                    upstream servers.
+                </div>
+
+
+                <div id="udp-server-list" class="server-list"></div>
+
+
+                <button id="add-udp-server" type="button" class="add-server">
+                    + Add DNS server
+                </button>
+
+            </section>
+
+
+            <!-- ==================================================
+                 ACTIONS
+                 ================================================== -->
+
+            <div class="upstream-actions">
+
+                <button id="refresh-upstream" type="button" class="upstream-button upstream-button-secondary">
+                    Refresh
+                </button>
+
+
+                <button id="apply-upstream" type="button" class="upstream-button upstream-button-primary">
+                    Apply Changes
+                </button>
+
+            </div>
+
 
         </div>
 
     </div>
 
 
-    <div class="table-wrapper">
+    <!-- ======================================================
+         ACTIVE CONFIGURATION
+         ====================================================== -->
 
-        <table>
+    <div class="card">
 
-            <tbody>
+        <div class="card-header">
 
-                <tr>
+            <div>
 
-                    <th>
-                        Transport
-                    </th>
+                <h2>
+                    Active Upstream
+                </h2>
 
-                    <td>
-                        {{ transport.transport | upper }}
-                    </td>
+                <p>
+                    Current DNS transport configuration.
+                </p>
 
-                </tr>
+            </div>
 
+            <div id="upstream-status" class="status-badge">
+                LIVE
+            </div>
 
-                <tr>
+        </div>
 
-                    <th>
-                        Display Name
-                    </th>
 
-                    <td>
-                        {{ transport.display_name }}
-                    </td>
+        <div id="active-upstream" class="active-upstream">
 
-                </tr>
+            <div class="upstream-loading">
+                Loading active configuration...
+            </div>
 
-
-                <tr>
-
-                    <th>
-                        Secure
-                    </th>
-
-                    <td>
-
-                        {% if transport.secure %}
-
-                            <span class="status-badge">
-                                ENCRYPTED
-                            </span>
-
-                        {% else %}
-
-                            <span class="status-badge">
-                                UNENCRYPTED
-                            </span>
-
-                        {% endif %}
-
-                    </td>
-
-                </tr>
-
-
-                {% if transport.transport == "udp" %}
-
-                    <tr>
-
-                        <th>
-                            Upstream Servers
-                        </th>
-
-                        <td>
-
-                            {% if transport.servers %}
-
-                                <ul>
-
-                                    {% for server in transport.servers %}
-
-                                        <li>
-                                            {{ server }}
-                                        </li>
-
-                                    {% endfor %}
-
-                                </ul>
-
-                            {% else %}
-
-                                None configured
-
-                            {% endif %}
-
-                        </td>
-
-                    </tr>
-
-                {% endif %}
-
-
-                {% if transport.transport == "dot" %}
-
-                    <tr>
-
-                        <th>
-                            Server
-                        </th>
-
-                        <td>
-                            {{ transport.server }}
-                        </td>
-
-                    </tr>
-
-
-                    <tr>
-
-                        <th>
-                            Port
-                        </th>
-
-                        <td>
-                            {{ transport.port }}
-                        </td>
-
-                    </tr>
-
-
-                    <tr>
-
-                        <th>
-                            TLS Verification
-                        </th>
-
-                        <td>
-
-                            {% if transport.tls_verification %}
-                                Enabled
-                            {% else %}
-                                Disabled
-                            {% endif %}
-
-                        </td>
-
-                    </tr>
-
-                {% endif %}
-
-
-                {% if transport.transport == "doh" %}
-
-                    <tr>
-
-                        <th>
-                            Provider
-                        </th>
-
-                        <td>
-                            {{ transport.provider }}
-                        </td>
-
-                    </tr>
-
-
-                    <tr>
-
-                        <th>
-                            Endpoint
-                        </th>
-
-                        <td>
-                            {{ transport.endpoint }}
-                        </td>
-
-                    </tr>
-
-
-                    <tr>
-
-                        <th>
-                            HTTP/2
-                        </th>
-
-                        <td>
-
-                            {% if transport.http2 %}
-                                Enabled
-                            {% else %}
-                                Disabled
-                            {% endif %}
-
-                        </td>
-
-                    </tr>
-
-
-                    <tr>
-
-                        <th>
-                            TLS Verification
-                        </th>
-
-                        <td>
-
-                            {% if transport.tls_verification %}
-                                Enabled
-                            {% else %}
-                                Disabled
-                            {% endif %}
-
-                        </td>
-
-                    </tr>
-
-                {% endif %}
-
-            </tbody>
-
-        </table>
+        </div>
 
     </div>
 
-</section>
+
+</div>
 
 
-<section class="security-note">
+<!-- ==========================================================
+     PAGE JAVASCRIPT
+     ========================================================== -->
 
-    <div class="security-note-icon">
-        ✓
-    </div>
-
-    <div>
-
-        <strong>
-            Safe configuration view
-        </strong>
-
-        <p>
-            This page exposes only non-secret upstream
-            configuration. Authentication data, credentials
-            and raw DNS packets are never returned.
-        </p>
-
-    </div>
-
-</section>
+<script src="{{ url_for(
+        'static',
+        path='js/upstream.js'
+    ) }}" defer></script>
 
 {% endblock %}

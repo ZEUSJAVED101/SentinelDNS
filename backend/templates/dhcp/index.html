@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block title %}
+DHCP — SentinelDNS
+{% endblock %}
+
+{% block page_title %}
+DHCP
+{% endblock %}
+
+{% block content %}
+
+<link rel="stylesheet" href="{{ url_for('static', path='css/dhcp.css') }}">
+
+<div class="dhcp-page">
+    <header class="dhcp-header">
+        <div>
+            <p class="dhcp-eyebrow">NETWORK SERVICES</p>
+            <h1>DHCP</h1>
+            <p class="dhcp-description">
+                View the configured DHCP service and current persistent lease records.
+            </p>
+        </div>
+
+        <div class="dhcp-header-actions">
+            <span class="dhcp-readonly-badge">READ ONLY</span>
+            <button type="button" class="dhcp-refresh" id="dhcpRefresh">
+                Refresh
+            </button>
+        </div>
+    </header>
+
+    <div id="dhcpMessage" class="dhcp-message" role="status" aria-live="polite" hidden></div>
+
+    <section class="dhcp-stats" aria-label="DHCP statistics">
+        <article class="dhcp-card dhcp-stat-card">
+            <span class="dhcp-stat-label">CONFIGURATION</span>
+            <strong id="dhcpEnabled" class="dhcp-stat-value">Loading</strong>
+            <span class="dhcp-stat-meta">Configured service state</span>
+        </article>
+
+        <article class="dhcp-card dhcp-stat-card">
+            <span class="dhcp-stat-label">ACTIVE LEASES</span>
+            <strong id="dhcpActiveLeases" class="dhcp-stat-value">—</strong>
+            <span class="dhcp-stat-meta">Current lease records</span>
+        </article>
+
+        <article class="dhcp-card dhcp-stat-card">
+            <span class="dhcp-stat-label">EXPIRED RECORDS</span>
+            <strong id="dhcpExpiredLeases" class="dhcp-stat-value">—</strong>
+            <span class="dhcp-stat-meta">Retained in persistent storage</span>
+        </article>
+
+        <article class="dhcp-card dhcp-stat-card">
+            <span class="dhcp-stat-label">POOL CAPACITY</span>
+            <strong id="dhcpPoolSize" class="dhcp-stat-value">—</strong>
+            <span class="dhcp-stat-meta">Addresses in configured range</span>
+        </article>
+    </section>
+
+    <div class="dhcp-grid">
+        <section class="dhcp-card dhcp-panel">
+            <div class="dhcp-panel-header">
+                <div>
+                    <p class="dhcp-kicker">SERVICE</p>
+                    <h2>DHCP Configuration</h2>
+                </div>
+                <span id="dhcpConfigBadge" class="dhcp-badge">Loading</span>
+            </div>
+
+            <div class="dhcp-details">
+                <div class="dhcp-detail"><span>Listen address</span><strong id="dhcpListen">—</strong></div>
+                <div class="dhcp-detail"><span>Interface</span><strong id="dhcpInterface">—</strong></div>
+                <div class="dhcp-detail"><span>Server IP</span><strong id="dhcpServerIp">—</strong></div>
+                <div class="dhcp-detail"><span>Subnet mask</span><strong id="dhcpSubnet">—</strong></div>
+                <div class="dhcp-detail"><span>Gateway</span><strong id="dhcpGateway">—</strong></div>
+                <div class="dhcp-detail"><span>DNS server</span><strong id="dhcpDns">—</strong></div>
+                <div class="dhcp-detail"><span>Lease duration</span><strong id="dhcpLeaseTime">—</strong></div>
+                <div class="dhcp-detail"><span>Pool range</span><strong id="dhcpPoolRange">—</strong></div>
+            </div>
+        </section>
+
+        <section class="dhcp-card dhcp-panel">
+            <div class="dhcp-panel-header">
+                <div>
+                    <p class="dhcp-kicker">CAPACITY</p>
+                    <h2>Address Pool</h2>
+                </div>
+            </div>
+
+            <div class="dhcp-pool-summary">
+                <div>
+                    <span>Configured</span>
+                    <strong id="dhcpPoolConfigured">—</strong>
+                </div>
+                <div>
+                    <span>Active</span>
+                    <strong id="dhcpPoolActive">—</strong>
+                </div>
+                <div>
+                    <span>Utilization</span>
+                    <strong id="dhcpPoolUtilization">—</strong>
+                </div>
+            </div>
+
+            <div class="dhcp-progress" aria-hidden="true">
+                <span id="dhcpProgressFill"></span>
+            </div>
+
+            <p class="dhcp-note">
+                Pool utilization is calculated from active persistent lease records. Expired records are not counted as in use.
+            </p>
+        </section>
+    </div>
+
+    <section class="dhcp-card dhcp-panel dhcp-leases-panel">
+        <div class="dhcp-panel-header">
+            <div>
+                <p class="dhcp-kicker">PERSISTENT DATA</p>
+                <h2>Lease Records</h2>
+            </div>
+            <span id="dhcpLeaseCount" class="dhcp-panel-count">—</span>
+        </div>
+
+        <div class="dhcp-table-wrap">
+            <table class="dhcp-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Client ID</th>
+                        <th scope="col">Hostname</th>
+                        <th scope="col">IP address</th>
+                        <th scope="col">State</th>
+                        <th scope="col">Lease end</th>
+                        <th scope="col">Remaining</th>
+                    </tr>
+                </thead>
+                <tbody id="dhcpLeaseRows">
+                    <tr>
+                        <td colspan="6" class="dhcp-empty">Loading lease records…</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', path='js/dhcp.js') }}" defer></script>
+{% endblock %}
