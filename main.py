@@ -37,6 +37,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from backend.api.auth import router as auth_router
+from backend.api.audit_log import router as audit_log_router
 from backend.api.dns_queries import (
     router as dns_queries_router,
 )
@@ -151,6 +152,10 @@ app = FastAPI(
 )
 app.include_router(
     auth_router,
+)
+
+app.include_router(
+    audit_log_router,
 )
 
 app.include_router(
@@ -446,6 +451,32 @@ async def login_page(
         context={
             "application": "SentinelDNS",
             "version": "1.0.0",
+        },
+    )
+
+
+# ==========================================================
+# SECURITY SETTINGS PAGE
+# ==========================================================
+
+@app.get(
+    "/settings",
+    tags=["Settings"],
+    response_class=Response,
+)
+async def settings_page(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+):
+    """Render the authenticated administrator security settings page."""
+
+    return templates.TemplateResponse(
+        request=request,
+        name="settings/index.html",
+        context={
+            "application": "SentinelDNS",
+            "version": "1.0.0",
+            "user": current_user,
         },
     )
 

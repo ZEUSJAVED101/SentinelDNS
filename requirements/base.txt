@@ -17,3 +17,5 @@ apscheduler
 jinja2
 
 python-multipart
+cryptography>=42,<47
+pyotp>=2.9,<3

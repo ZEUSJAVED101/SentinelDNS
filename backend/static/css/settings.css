@@ -1,0 +1,246 @@
+.settings-page {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 8px 0 48px;
+}
+
+.settings-header {
+    margin-bottom: 24px;
+}
+
+.settings-eyebrow,
+.settings-kicker {
+    margin: 0 0 6px;
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.settings-header h1,
+.settings-card h2,
+.settings-card h3 {
+    margin: 0;
+}
+
+.settings-header h1 {
+    font-size: 28px;
+    line-height: 1.2;
+}
+
+.settings-description,
+.settings-muted {
+    color: var(--text-secondary);
+}
+
+.settings-description {
+    margin: 8px 0 0;
+}
+
+.settings-card {
+    padding: 24px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--panel-bg);
+    box-shadow: var(--shadow);
+}
+
+.settings-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+}
+
+.settings-card h2 {
+    font-size: 20px;
+}
+
+.settings-muted {
+    max-width: 680px;
+    margin: 8px 0 0;
+}
+
+.settings-badge {
+    flex: 0 0 auto;
+    padding: 6px 10px;
+    border: 1px solid var(--border-light);
+    border-radius: 999px;
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.settings-state {
+    margin-top: 22px;
+    padding: 14px 16px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+}
+
+.totp-enrollment {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 220px;
+    gap: 24px;
+    margin-top: 22px;
+    padding-top: 22px;
+    border-top: 1px solid var(--border);
+}
+
+.totp-qr-wrap {
+    grid-column: 2;
+    grid-row: 1 / span 3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 220px;
+    padding: 16px;
+    border-radius: var(--radius-md);
+    background: #ffffff;
+}
+
+.totp-qr {
+    width: 190px;
+    height: 190px;
+}
+
+.totp-instructions,
+.totp-secret-block,
+.totp-confirm-form {
+    grid-column: 1;
+}
+
+.totp-instructions p {
+    margin: 8px 0 0;
+    color: var(--text-secondary);
+}
+
+.totp-secret-block label,
+.totp-confirm-form label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 700;
+}
+
+.totp-secret-row,
+.totp-confirm-row {
+    display: flex;
+    gap: 10px;
+}
+
+.totp-secret-row input,
+.totp-confirm-row input {
+    min-width: 0;
+    flex: 1;
+    padding: 11px 12px;
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+.totp-confirm-row input {
+    max-width: 180px;
+    letter-spacing: 0.16em;
+    text-align: center;
+}
+
+.settings-warning {
+    margin: 8px 0 0;
+    color: var(--warning);
+    font-size: 12px;
+}
+
+.settings-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 22px;
+}
+
+.settings-primary-button,
+.settings-secondary-button {
+    min-height: 42px;
+    padding: 10px 16px;
+    border-radius: var(--radius-sm);
+    font-weight: 700;
+}
+
+.settings-primary-button {
+    border: 1px solid var(--accent);
+    background: var(--accent);
+    color: #07100c;
+}
+
+.settings-secondary-button {
+    border: 1px solid var(--border-light);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.settings-primary-button:hover:not(:disabled) {
+    background: var(--accent-hover);
+}
+
+.settings-secondary-button:hover:not(:disabled) {
+    background: var(--panel-bg-hover);
+}
+
+.settings-primary-button:disabled,
+.settings-secondary-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+.settings-message {
+    margin-top: 16px;
+    padding: 12px 14px;
+    border-radius: var(--radius-sm);
+}
+
+.settings-message-error {
+    border: 1px solid rgba(240, 91, 103, 0.35);
+    background: rgba(240, 91, 103, 0.08);
+    color: #ff9aa2;
+}
+
+.settings-message-success {
+    border: 1px solid rgba(53, 212, 154, 0.35);
+    background: rgba(53, 212, 154, 0.08);
+    color: var(--accent);
+}
+
+@media (max-width: 760px) {
+    .settings-page {
+        padding-right: 4px;
+        padding-left: 4px;
+    }
+
+    .settings-card {
+        padding: 18px;
+    }
+
+    .settings-card-header {
+        flex-direction: column;
+    }
+
+    .totp-enrollment {
+        grid-template-columns: 1fr;
+    }
+
+    .totp-qr-wrap {
+        grid-column: 1;
+        grid-row: auto;
+        justify-self: center;
+    }
+
+    .totp-confirm-row,
+    .totp-secret-row {
+        flex-direction: column;
+    }
+
+    .totp-confirm-row input {
+        max-width: none;
+    }
+}

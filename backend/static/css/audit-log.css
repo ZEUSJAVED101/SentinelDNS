@@ -1,0 +1,115 @@
+/* ==========================================================
+   SentinelDNS Audit Log
+   Matches the main SentinelDNS dark application theme.
+   ========================================================== */
+
+.audit-page {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    color: var(--text-primary);
+}
+
+.audit-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.audit-header h1 {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 24px;
+    line-height: 1.25;
+}
+
+.audit-header p {
+    margin: 6px 0 0;
+    color: var(--text-secondary);
+}
+
+.audit-refresh {
+    min-height: 40px;
+    padding: 0 16px;
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    background: var(--panel-bg);
+    color: var(--text-primary);
+    font-weight: 600;
+    transition: background var(--transition), border-color var(--transition);
+}
+
+.audit-refresh:hover {
+    background: var(--panel-bg-hover);
+    border-color: var(--accent-dark);
+}
+
+.audit-status {
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--panel-bg);
+    color: var(--text-secondary);
+}
+
+.audit-table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--panel-bg);
+    box-shadow: var(--shadow);
+}
+
+.audit-table {
+    width: 100%;
+    border-collapse: collapse;
+    color: var(--text-primary);
+}
+
+.audit-table th,
+.audit-table td {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+    vertical-align: top;
+    white-space: nowrap;
+}
+
+.audit-table th {
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.audit-table td {
+    color: var(--text-primary);
+}
+
+.audit-table tbody tr:hover {
+    background: var(--panel-bg-hover);
+}
+
+.audit-table td:last-child {
+    white-space: normal;
+    min-width: 240px;
+    overflow-wrap: anywhere;
+    color: var(--text-secondary);
+}
+
+.audit-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+@media (max-width: 800px) {
+    .audit-header {
+        flex-direction: column;
+    }
+
+    .audit-refresh {
+        width: 100%;
+    }
+}
