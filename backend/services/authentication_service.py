@@ -2,10 +2,11 @@
 Authentication Service
 
 Responsibilities:
-- Register new users
-- Authenticate users
-- Generate JWT access tokens
-- Coordinate repositories and security utilities
+- Register new users.
+- Authenticate administrator credentials.
+- Enforce account activity and administrator-only access.
+- Issue a restricted token for the next authentication step.
+- Never grant a fully authenticated session before MFA verification.
 """
 
 from __future__ import annotations
@@ -29,23 +30,11 @@ from database.models.user import User
 
 
 class AuthenticationService:
-    """
-    Handles user registration and authentication.
-    """
-
     def __init__(self, session: Session) -> None:
         self._session = session
         self._users = UserRepository(session)
 
-    # ==========================================================
-    # Registration
-    # ==========================================================
-
     def register(self, user: UserCreate) -> UserResponse:
-        """
-        Register a new user.
-        """
-
         if self._users.username_exists(user.username):
             raise UsernameAlreadyExistsError()
 
@@ -62,35 +51,18 @@ class AuthenticationService:
             self._users.create(db_user)
             self._session.commit()
             self._session.refresh(db_user)
-
             return UserResponse.model_validate(db_user)
-
         except SQLAlchemyError:
             self._session.rollback()
             raise
 
-    # ==========================================================
-    # Authentication
-    # ==========================================================
-
-    def authenticate(
-        self,
-        username: str,
-        password: str,
-    ) -> Token:
-        """
-        Authenticate a user and return a JWT access token.
-        """
-
+    def authenticate(self, username: str, password: str) -> Token:
         user = self._users.get_by_username(username)
 
         if user is None:
             raise InvalidCredentialsError()
 
-        if not verify_password(
-            password,
-            user.password_hash,
-        ):
+        if not verify_password(password, user.password_hash):
             raise InvalidCredentialsError()
 
         if not user.is_active:
@@ -99,8 +71,12 @@ class AuthenticationService:
         if user.role != UserRole.ADMIN:
             raise InvalidCredentialsError()
 
+        # Password authentication alone must never create an
+        # authenticated session. TOTP must be completed separately.
         access_token = create_access_token(
             subject=user.username,
+            purpose="totp_enrollment",
+            mfa_completed=False,
         )
 
         return Token(

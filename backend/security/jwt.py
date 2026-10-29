@@ -2,40 +2,51 @@
 JWT Utility Module
 
 Responsibilities:
-- Create JWT access tokens
+- Create signed JWT access tokens
+- Distinguish authenticated sessions from pending enrollment
 - Decode and validate JWTs
-- Raise authentication exceptions
 """
 
+from __future__ import annotations
+
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict
+from typing import Any
 
 import jwt
 from jwt import ExpiredSignatureError, InvalidTokenError
 
 from backend.core.config import settings
-from backend.exceptions.auth import InvalidTokenError as SentinelInvalidTokenError
+from backend.exceptions.auth import (
+    InvalidTokenError as SentinelInvalidTokenError,
+)
 
 
-def create_access_token(subject: str) -> str:
-    """
-    Create a signed JWT access token.
+def create_access_token(
+    subject: str,
+    *,
+    purpose: str = "unverified",
+    mfa_completed: bool = False,
+    expires_minutes: int | None = None,
+) -> str:
+    """Create a signed JWT with explicit authentication state."""
 
-    Args:
-        subject: User identifier (typically username or user ID)
+    lifetime = (
+        expires_minutes
+        if expires_minutes is not None
+        else settings.security.access_token_expire_minutes
+    )
 
-    Returns:
-        Encoded JWT string
-    """
+    if lifetime < 1:
+        raise ValueError("Token lifetime must be at least one minute.")
 
     now = datetime.now(timezone.utc)
 
     payload = {
         "sub": subject,
         "iat": now,
-        "exp": now + timedelta(
-            minutes=settings.security.access_token_expire_minutes
-        ),
+        "exp": now + timedelta(minutes=lifetime),
+        "purpose": purpose,
+        "mfa_completed": mfa_completed,
     }
 
     return jwt.encode(
@@ -45,31 +56,22 @@ def create_access_token(subject: str) -> str:
     )
 
 
-def decode_access_token(token: str) -> Dict[str, Any]:
-    """
-    Decode and validate a JWT.
-
-    Args:
-        token: JWT string
-
-    Returns:
-        Decoded payload
-
-    Raises:
-        InvalidTokenError
-    """
+def decode_access_token(token: str) -> dict[str, Any]:
+    """Decode a JWT and validate its signature and expiration."""
 
     try:
-        payload = jwt.decode(
+        return jwt.decode(
             token,
             settings.security.secret_key,
             algorithms=[settings.security.algorithm],
         )
 
-        return payload
-
     except ExpiredSignatureError as exc:
-        raise SentinelInvalidTokenError("Token has expired.") from exc
+        raise SentinelInvalidTokenError(
+            "Token has expired."
+        ) from exc
 
     except InvalidTokenError as exc:
-        raise SentinelInvalidTokenError("Invalid authentication token.") from exc
+        raise SentinelInvalidTokenError(
+            "Invalid authentication token."
+        ) from exc

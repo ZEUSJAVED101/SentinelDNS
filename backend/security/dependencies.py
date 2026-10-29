@@ -1,25 +1,3 @@
-"""
-SentinelDNS Security Dependencies
-
-Responsibilities:
-- Authenticate browser sessions
-- Authenticate Bearer-token API clients
-- Validate JWT access tokens
-- Verify the current user exists and is active
-- Enforce role-based authorization
-
-Security model:
-
-- Browser JWT is stored only in an HttpOnly cookie.
-- API clients may use Authorization: Bearer <JWT>.
-- Browser sessions are bound to the current SentinelDNS
-  server instance.
-- Restarting the SentinelDNS server invalidates old browser
-  sessions.
-- Client addresses and DNS query information are never
-  handled here.
-"""
-
 from __future__ import annotations
 
 from typing import Callable
@@ -39,199 +17,114 @@ from database.database import get_db
 from database.enums.user_role import UserRole
 from database.models.user import User
 
-
-# ==========================================================
-# Browser Authentication Cookie
-# ==========================================================
-
 AUTH_COOKIE_NAME = "sentineldns_session"
-
-# Cookie containing the current server-instance identifier.
-#
-# This is NOT the JWT.
-#
-# It allows SentinelDNS to invalidate all browser sessions
-# whenever the application is restarted.
-
-SERVER_SESSION_COOKIE_NAME = (
-    "sentineldns_server_session"
-)
+SERVER_SESSION_COOKIE_NAME = "sentineldns_server_session"
 
 
-# ==========================================================
-# Current User
-# ==========================================================
-
-def get_current_user(
-    request: Request,
-    db: Session = Depends(get_db),
-) -> User:
-    """
-    Validate authentication and return the current user.
-
-    Authentication order:
-
-    1. Authorization: Bearer <JWT>
-    2. HttpOnly browser JWT cookie
-
-    Browser authentication additionally requires the current
-    server-session cookie.
-
-    Therefore:
-
-        Server restart
-              ↓
-        New server session ID
-              ↓
-        Old browser session rejected
-              ↓
-        User must log in again
-    """
-
+def _get_token_payload(request: Request) -> dict:
     token: str | None = None
 
-    # ------------------------------------------------------
-    # 1. Authorization header
-    #
-    # Bearer authentication is intended for API clients.
-    # ------------------------------------------------------
-
-    authorization = request.headers.get(
-        "Authorization",
-        "",
-    ).strip()
+    authorization = request.headers.get("Authorization", "").strip()
 
     if authorization:
-
-        scheme, separator, credentials = (
-            authorization.partition(" ")
-        )
-
-        if (
-            separator
-            and scheme.lower() == "bearer"
-            and credentials.strip()
-        ):
+        scheme, separator, credentials = authorization.partition(" ")
+        if separator and scheme.lower() == "bearer" and credentials.strip():
             token = credentials.strip()
-
-    # ------------------------------------------------------
-    # 2. Browser session
-    # ------------------------------------------------------
 
     using_browser_cookie = False
 
     if not token:
-
-        cookie_token = request.cookies.get(
-            AUTH_COOKIE_NAME,
-        )
-
+        cookie_token = request.cookies.get(AUTH_COOKIE_NAME)
         if cookie_token:
-
             token = cookie_token.strip()
             using_browser_cookie = True
 
-    # ------------------------------------------------------
-    # No authentication supplied.
-    # ------------------------------------------------------
-
     if not token:
-
         raise AuthenticationRequiredError()
 
-    # ------------------------------------------------------
-    # Browser sessions must belong to the current server
-    # instance.
-    #
-    # Bearer API clients are intentionally not subject to
-    # this browser-session requirement.
-    # ------------------------------------------------------
-
     if using_browser_cookie:
-
         current_server_session = getattr(
-            request.app.state,
-            "server_session_id",
-            None,
+            request.app.state, "server_session_id", None
         )
-
-        browser_server_session = (
-            request.cookies.get(
-                SERVER_SESSION_COOKIE_NAME,
-            )
+        browser_server_session = request.cookies.get(
+            SERVER_SESSION_COOKIE_NAME
         )
 
         if (
             not current_server_session
             or not browser_server_session
-            or browser_server_session
-            != current_server_session
+            or browser_server_session != current_server_session
         ):
-
             raise AuthenticationRequiredError()
 
-    # ------------------------------------------------------
-    # Decode and validate JWT.
-    # ------------------------------------------------------
+    payload = decode_access_token(token)
 
-    payload = decode_access_token(
-        token,
-    )
-
-    username = payload.get(
-        "sub",
-    )
-
-    if not username:
-
+    if not isinstance(payload, dict):
         raise InvalidTokenError()
 
-    # ------------------------------------------------------
-    # Load user from database.
-    # ------------------------------------------------------
+    return payload
 
-    repository = UserRepository(
-        db,
-    )
 
-    user = repository.get_by_username(
-        username,
-    )
+def _get_active_user(payload: dict, db: Session) -> User:
+    username = payload.get("sub")
+
+    if not isinstance(username, str) or not username.strip():
+        raise InvalidTokenError()
+
+    repository = UserRepository(db)
+    user = repository.get_by_username(username)
 
     if user is None:
-
         raise InvalidTokenError()
 
-    # ------------------------------------------------------
-    # Verify account status.
-    # ------------------------------------------------------
-
     if not user.is_active:
-
         raise UserInactiveError()
 
     return user
 
 
-# ==========================================================
-# Role-Based Authorization
-# ==========================================================
+def get_current_user(
+    request: Request,
+    db: Session = Depends(get_db),
+) -> User:
+    """Return a user only when the token proves MFA is complete."""
+    payload = _get_token_payload(request)
 
-def require_role(
-    role: UserRole,
-) -> Callable:
-    """
-    Factory for role-based authorization dependencies.
-    """
+    if (
+        payload.get("purpose") != "authenticated"
+        or payload.get("mfa_completed") is not True
+    ):
+        raise AuthenticationRequiredError()
 
+    return _get_active_user(payload, db)
+
+
+def get_totp_enrollment_user(
+    request: Request,
+    db: Session = Depends(get_db),
+) -> User:
+    """Allow an admin with a pending token to access enrollment only."""
+    payload = _get_token_payload(request)
+
+    if (
+        payload.get("purpose") != "totp_enrollment"
+        or payload.get("mfa_completed") is not False
+    ):
+        raise AuthenticationRequiredError()
+
+    user = _get_active_user(payload, db)
+
+    if user.role != UserRole.ADMIN:
+        raise PermissionDeniedError()
+
+    return user
+
+
+def require_role(role: UserRole) -> Callable:
     def dependency(
-        current_user: User = Depends(
-            get_current_user,
-        ),
+        current_user: User = Depends(get_current_user),
     ) -> User:
-
         if current_user.role != role:
-
             raise PermissionDeniedError()
 
         return current_user
@@ -239,10 +132,4 @@ def require_role(
     return dependency
 
 
-# ==========================================================
-# Admin Authorization
-# ==========================================================
-
-require_admin = require_role(
-    UserRole.ADMIN,
-)
+require_admin = require_role(UserRole.ADMIN)

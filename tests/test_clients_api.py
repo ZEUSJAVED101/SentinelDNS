@@ -1,4 +1,4 @@
-"""Focused Clients API tests.
+﻿"""Focused Clients API tests.
 
 These tests are intentionally lightweight. They verify the response models
 and bounded search validation without requiring the live SentinelDNS server.
@@ -32,6 +32,8 @@ def test_clients_response_is_bounded():
         returned=500,
         active=500,
         expired=1,
+        reservations=0,
+        exclusions=0,
         clients=[],
     )
     assert response.returned == 500

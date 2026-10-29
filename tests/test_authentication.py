@@ -13,6 +13,7 @@ from backend.exceptions.auth import (
     UsernameAlreadyExistsError,
 )
 from backend.schemas.user import UserCreate
+from backend.security.jwt import decode_access_token
 from backend.services.authentication_service import AuthenticationService
 
 
@@ -22,15 +23,11 @@ from backend.services.authentication_service import AuthenticationService
 
 @pytest.fixture()
 def db_session():
-    """
-    Create an isolated in-memory SQLite database for each test.
-    """
+    """Create an isolated in-memory SQLite database for each test."""
 
     engine = create_engine(
         "sqlite:///:memory:",
-        connect_args={
-            "check_same_thread": False,
-        },
+        connect_args={"check_same_thread": False},
     )
 
     TestingSessionLocal = sessionmaker(
@@ -40,7 +37,6 @@ def db_session():
     )
 
     Base.metadata.create_all(engine)
-
     session = TestingSessionLocal()
 
     try:
@@ -53,9 +49,7 @@ def db_session():
 
 @pytest.fixture()
 def service(db_session):
-    return AuthenticationService(
-        db_session,
-    )
+    return AuthenticationService(db_session)
 
 
 # ==========================================================
@@ -77,9 +71,7 @@ def test_register_user(service):
     assert user.role == UserRole.USER
 
 
-def test_duplicate_username_is_rejected(
-    service,
-):
+def test_duplicate_username_is_rejected(service):
     service.register(
         UserCreate(
             username="testuser",
@@ -88,9 +80,7 @@ def test_duplicate_username_is_rejected(
         )
     )
 
-    with pytest.raises(
-        UsernameAlreadyExistsError,
-    ):
+    with pytest.raises(UsernameAlreadyExistsError):
         service.register(
             UserCreate(
                 username="testuser",
@@ -100,9 +90,7 @@ def test_duplicate_username_is_rejected(
         )
 
 
-def test_duplicate_email_is_rejected(
-    service,
-):
+def test_duplicate_email_is_rejected(service):
     service.register(
         UserCreate(
             username="firstuser",
@@ -111,9 +99,7 @@ def test_duplicate_email_is_rejected(
         )
     )
 
-    with pytest.raises(
-        EmailAlreadyExistsError,
-    ):
+    with pytest.raises(EmailAlreadyExistsError):
         service.register(
             UserCreate(
                 username="seconduser",
@@ -127,9 +113,7 @@ def test_duplicate_email_is_rejected(
 # Authentication
 # ==========================================================
 
-def test_authenticate_valid_user(
-    service,
-):
+def test_authenticate_valid_user(service, db_session):
     service.register(
         UserCreate(
             username="testuser",
@@ -137,6 +121,17 @@ def test_authenticate_valid_user(
             password="Password123!",
         )
     )
+
+    user = (
+        db_session.query(User)
+        .filter(User.username == "testuser")
+        .first()
+    )
+    assert user is not None
+
+    # Only administrators may authenticate through the admin login.
+    user.role = UserRole.ADMIN
+    db_session.commit()
 
     token = service.authenticate(
         username="testuser",
@@ -146,22 +141,23 @@ def test_authenticate_valid_user(
     assert token.access_token
     assert token.token_type == "bearer"
 
+    # Password verification must issue a restricted pending-MFA token,
+    # not a fully authenticated session token.
+    payload = decode_access_token(token.access_token)
+    assert payload["sub"] == "testuser"
+    assert payload["purpose"] == "totp_enrollment"
+    assert payload["mfa_completed"] is False
 
-def test_invalid_username_is_rejected(
-    service,
-):
-    with pytest.raises(
-        InvalidCredentialsError,
-    ):
+
+def test_invalid_username_is_rejected(service):
+    with pytest.raises(InvalidCredentialsError):
         service.authenticate(
             username="does-not-exist",
             password="Password123!",
         )
 
 
-def test_invalid_password_is_rejected(
-    service,
-):
+def test_invalid_password_is_rejected(service, db_session):
     service.register(
         UserCreate(
             username="testuser",
@@ -170,19 +166,23 @@ def test_invalid_password_is_rejected(
         )
     )
 
-    with pytest.raises(
-        InvalidCredentialsError,
-    ):
+    user = (
+        db_session.query(User)
+        .filter(User.username == "testuser")
+        .first()
+    )
+    assert user is not None
+    user.role = UserRole.ADMIN
+    db_session.commit()
+
+    with pytest.raises(InvalidCredentialsError):
         service.authenticate(
             username="testuser",
             password="WrongPassword123!",
         )
 
 
-def test_inactive_user_is_rejected(
-    service,
-    db_session,
-):
+def test_inactive_user_is_rejected(service, db_session):
     service.register(
         UserCreate(
             username="inactiveuser",
@@ -191,19 +191,18 @@ def test_inactive_user_is_rejected(
         )
     )
 
-    user = db_session.query(User).filter(
-        User.username == "inactiveuser",
-    ).first()
-
+    user = (
+        db_session.query(User)
+        .filter(User.username == "inactiveuser")
+        .first()
+    )
     assert user is not None
 
+    user.role = UserRole.ADMIN
     user.is_active = False
-
     db_session.commit()
 
-    with pytest.raises(
-        UserInactiveError,
-    ):
+    with pytest.raises(UserInactiveError):
         service.authenticate(
             username="inactiveuser",
             password="Password123!",

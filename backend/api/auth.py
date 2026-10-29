@@ -1,4 +1,4 @@
-"""SentinelDNS authentication API."""
+﻿"""SentinelDNS authentication API."""
 
 from __future__ import annotations
 
@@ -20,7 +20,9 @@ from backend.security.dependencies import (
     AUTH_COOKIE_NAME,
     SERVER_SESSION_COOKIE_NAME,
     get_current_user,
+    get_totp_enrollment_user,
 )
+from backend.security.jwt import create_access_token
 from backend.security.totp import (
     build_provisioning_uri,
     build_qr_code_data_uri,
@@ -36,10 +38,47 @@ from database.database import get_db
 from database.enums.user_role import UserRole
 from database.models.user import User
 
+
 router = APIRouter(
     prefix="/auth",
     tags=["Authentication"],
 )
+
+
+def _set_auth_cookie(
+    response: Response,
+    token: str,
+) -> None:
+    """Set the HTTP-only browser authentication cookie."""
+    response.set_cookie(
+        key=AUTH_COOKIE_NAME,
+        value=token,
+        httponly=True,
+        secure=False,
+        samesite="strict",
+        max_age=60 * 60,
+        path="/",
+    )
+
+
+def _record_audit_safely(
+    db: Session,
+    *,
+    action: str,
+    actor: User,
+    resource: str,
+) -> None:
+    """Record an audit event without breaking the authentication flow."""
+    try:
+        AuditLogService.record(
+            db,
+            action=action,
+            result="SUCCESS",
+            actor=actor,
+            resource=resource,
+        )
+    except Exception:
+        db.rollback()
 
 
 @router.post(
@@ -53,7 +92,7 @@ def login(
     service: AuthenticationService = Depends(get_auth_service),
     db: Session = Depends(get_db),
 ) -> Token:
-    """Authenticate an administrator and establish a browser session."""
+    """Verify administrator credentials and establish a pending MFA session."""
 
     token = service.authenticate(
         username=form_data.username,
@@ -69,15 +108,8 @@ def login(
     if not server_session_id:
         raise RuntimeError("SentinelDNS server session is unavailable.")
 
-    response.set_cookie(
-        key=AUTH_COOKIE_NAME,
-        value=token.access_token,
-        httponly=True,
-        secure=False,
-        samesite="strict",
-        max_age=60 * 60,
-        path="/",
-    )
+    # This token is restricted until TOTP verification succeeds.
+    _set_auth_cookie(response, token.access_token)
 
     response.set_cookie(
         key=SERVER_SESSION_COOKIE_NAME,
@@ -89,19 +121,19 @@ def login(
         path="/",
     )
 
-    try:
-        user = db.query(User).filter(User.username == form_data.username).first()
-        if user is not None:
-            AuditLogService.record(
-                db,
-                action="LOGIN",
-                result="SUCCESS",
-                actor=user,
-                resource="authentication",
-            )
-    except Exception:
-        # Audit logging must never break a successful login.
-        db.rollback()
+    user = (
+        db.query(User)
+        .filter(User.username == form_data.username)
+        .first()
+    )
+
+    if user is not None:
+        _record_audit_safely(
+            db,
+            action="LOGIN_PASSWORD_VERIFIED",
+            actor=user,
+            resource="authentication",
+        )
 
     return token
 
@@ -117,19 +149,16 @@ def logout(
 ) -> Response:
     """Clear the browser authentication cookies."""
 
-    try:
-        AuditLogService.record(
-            db,
-            action="LOGOUT",
-            result="SUCCESS",
-            actor=current_user,
-            resource="authentication",
-        )
-    except Exception:
-        db.rollback()
+    _record_audit_safely(
+        db,
+        action="LOGOUT",
+        actor=current_user,
+        resource="authentication",
+    )
 
     response.delete_cookie(key=AUTH_COOKIE_NAME, path="/")
     response.delete_cookie(key=SERVER_SESSION_COOKIE_NAME, path="/")
+
     return response
 
 
@@ -165,21 +194,18 @@ def totp_status(
     response_model=TOTPEnrollResponse,
 )
 def totp_enroll(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_totp_enrollment_user),
     db: Session = Depends(get_db),
 ) -> TOTPEnrollResponse:
-    """
-    Start TOTP enrollment for the current administrator.
-
-    The secret is returned only as part of the enrollment response.
-    It is encrypted before being persisted and is never logged.
-    """
+    """Start TOTP enrollment for an administrator who has not enabled it."""
 
     if current_user.role != UserRole.ADMIN:
         raise PermissionDeniedError()
 
     if current_user.totp_enabled:
-        raise PermissionDeniedError("TOTP is already enrolled for this account.")
+        raise PermissionDeniedError(
+            "TOTP is already enabled. Verify a current authenticator code."
+        )
 
     secret = generate_totp_secret()
 
@@ -190,17 +216,12 @@ def totp_enroll(
     db.commit()
     db.refresh(current_user)
 
-    try:
-        AuditLogService.record(
-            db,
-            action="TOTP_ENROLL_STARTED",
-            result="SUCCESS",
-            actor=current_user,
-            resource="totp",
-        )
-    except Exception:
-        db.rollback()
-        # Enrollment already committed; audit failure must not expose the secret or break setup.
+    _record_audit_safely(
+        db,
+        action="TOTP_ENROLL_STARTED",
+        actor=current_user,
+        resource="totp",
+    )
 
     provisioning_uri = build_provisioning_uri(
         secret,
@@ -216,47 +237,76 @@ def totp_enroll(
 
 @router.post(
     "/totp/confirm",
-    response_model=TOTPStatusResponse,
+    response_model=Token,
 )
 def totp_confirm(
     payload: TOTPVerifyRequest,
-    current_user: User = Depends(get_current_user),
+    response: Response,
+    current_user: User = Depends(get_totp_enrollment_user),
     db: Session = Depends(get_db),
-) -> TOTPStatusResponse:
-    """Confirm an authenticator code and activate TOTP for the account."""
+) -> Token:
+    """
+    Verify a TOTP code and issue a fully authenticated session.
+
+    For first-time enrollment, successful verification enables TOTP.
+    For an existing enrollment, a valid current code is still required.
+    """
 
     if current_user.role != UserRole.ADMIN:
         raise PermissionDeniedError()
 
-    if current_user.totp_enabled:
-        return TOTPStatusResponse(enabled=True, confirmed=True)
-
     if not current_user.totp_secret_encrypted:
-        raise PermissionDeniedError("TOTP enrollment has not been started.")
+        raise PermissionDeniedError(
+            "TOTP enrollment has not been started."
+        )
 
     try:
-        secret = decrypt_totp_secret(current_user.totp_secret_encrypted)
+        secret = decrypt_totp_secret(
+            current_user.totp_secret_encrypted
+        )
     except ValueError as exc:
-        raise PermissionDeniedError("TOTP enrollment data is invalid.") from exc
+        raise PermissionDeniedError(
+            "TOTP enrollment data is invalid."
+        ) from exc
 
     if not verify_totp_code(secret, payload.code):
-        raise PermissionDeniedError("Invalid authenticator code.")
+        raise PermissionDeniedError(
+            "Invalid authenticator code."
+        )
 
-    current_user.totp_enabled = True
-    current_user.totp_confirmed_at = datetime.now(timezone.utc)
+    # Only first-time enrollment changes the enrollment state.
+    if not current_user.totp_enabled:
+        current_user.totp_enabled = True
+        current_user.totp_confirmed_at = datetime.now(timezone.utc)
 
-    db.commit()
-    db.refresh(current_user)
+        db.commit()
+        db.refresh(current_user)
 
-    try:
-        AuditLogService.record(
+        _record_audit_safely(
             db,
             action="TOTP_ENROLL_CONFIRMED",
-            result="SUCCESS",
             actor=current_user,
             resource="totp",
         )
-    except Exception:
-        db.rollback()
+    else:
+        _record_audit_safely(
+            db,
+            action="TOTP_LOGIN_VERIFIED",
+            actor=current_user,
+            resource="authentication",
+        )
 
-    return TOTPStatusResponse(enabled=True, confirmed=True)
+    # Password and TOTP have now both been verified.
+    authenticated_token = create_access_token(
+        subject=current_user.username,
+        purpose="authenticated",
+        mfa_completed=True,
+    )
+
+    # Replace the pending MFA cookie with the authenticated token.
+    _set_auth_cookie(response, authenticated_token)
+
+    return Token(
+        access_token=authenticated_token,
+        token_type="bearer",
+    )
